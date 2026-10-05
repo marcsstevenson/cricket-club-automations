@@ -7,5 +7,5 @@ web/node_modules/
 assets-src/
 test-results/
 playwright-report/
-squad.json
+squad*.json
 !api/test/fixtures/squad.json

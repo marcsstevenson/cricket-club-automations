@@ -66,3 +66,15 @@ npm run deploy
 ## New season
 
 Upload a new squad JSON with the new `playhqSeasonId` (and grade IDs once PlayHQ allocates them).
+
+## Demo (last season, frozen clock)
+
+A separate Worker, `pcc-game-day-demo`, runs 2025/26 with "now" frozen at Saturday 21 March 2026, 9 pm NZ (`FAKE_NOW` in `wrangler.jsonc` → `env.demo`). It has its own D1, KV and R2, so nothing touches production.
+
+```bash
+npm run build:web && npx wrangler deploy --env demo
+npx wrangler d1 migrations apply pcc-game-day-demo --env demo --remote
+npx wrangler kv key put squad --path=squad.demo.json --binding=CONFIG --env demo --remote
+```
+
+`squad.demo.json` (git-ignored) maps this season's players onto last season's teams and grades. To remove the demo: `npx wrangler delete --env demo`, then delete the `pcc-game-day-demo` D1 database, KV namespace and `pcc-game-day-demo-photos` bucket.

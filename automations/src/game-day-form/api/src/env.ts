@@ -14,6 +14,8 @@ export interface Env {
   PLAYHQ_ORG_ID: string;
   PLAYHQ_BASE_URL: string;
   ADMIN_PASSCODE: string;
+  /** Demo environment only: ISO timestamp the server treats as "now". */
+  FAKE_NOW?: string;
 }
 
 export type LimitName = 'WRITE_LIMIT' | 'REFRESH_LIMIT' | 'ADMIN_LIMIT';

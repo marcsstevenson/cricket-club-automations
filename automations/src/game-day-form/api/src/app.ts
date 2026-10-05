@@ -13,7 +13,9 @@ export function createApp(deps: Deps) {
   const app = new Hono<AppEnv>().basePath('/api');
 
   app.use('*', async (c, next) => {
-    c.set('deps', deps);
+    // Demo environment only: freeze "now" so a past season can be exercised end to end.
+    const fake = c.env?.FAKE_NOW ? new Date(c.env.FAKE_NOW) : null;
+    c.set('deps', fake && !Number.isNaN(fake.getTime()) ? { ...deps, now: () => fake } : deps);
     await next();
   });
 

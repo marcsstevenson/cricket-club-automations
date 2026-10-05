@@ -25,5 +25,29 @@
     "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",
     "PLAYHQ_BASE_URL": "https://api.playhq.com"
   },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // Demo: last season (2025/26) with the clock frozen at the final Saturday. Deploy with `--env demo`.
+  "env": {
+    "demo": {
+      "name": "pcc-game-day-demo",
+      "d1_databases": [
+        { "binding": "DB", "database_name": "pcc-game-day-demo", "database_id": "02c8311d-68b7-48f5-b8b1-2ba829f21d60", "migrations_dir": "migrations" }
+      ],
+      "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "pcc-game-day-demo-photos" }],
+      "kv_namespaces": [{ "binding": "CONFIG", "id": "f03102f995f44b3982765fe8a81855ba" }],
+      "ratelimits": [
+        { "name": "WRITE_LIMIT", "namespace_id": "2001", "simple": { "limit": 30, "period": 60 } },
+        { "name": "REFRESH_LIMIT", "namespace_id": "2002", "simple": { "limit": 1, "period": 60 } },
+        { "name": "ADMIN_LIMIT", "namespace_id": "2003", "simple": { "limit": 5, "period": 60 } }
+      ],
+      "triggers": { "crons": ["0 14 * * *"] },
+      "vars": {
+        "PLAYHQ_TENANT": "nzc",
+        "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",
+        "PLAYHQ_BASE_URL": "https://api.playhq.com",
+        "FAKE_NOW": "2026-03-21T08:00:00Z"
+      }
+    }
+  }
 }
