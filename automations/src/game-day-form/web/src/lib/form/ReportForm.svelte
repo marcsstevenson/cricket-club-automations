@@ -121,5 +121,5 @@
 </form>
 
 <style>
-  .refresh { margin-top: 16px; }
+  .refresh { margin-top: 24px; }
 </style>
