@@ -48,6 +48,9 @@ export async function loadGameContext(c: Ctx, slug: string, gameId: string) {
   const labels = squadLabels(team.players);
   const today = nzDate(deps.now());
   const fixture = await fixtureFor(c, squad, team, today);
+  if (!fixture.available) {
+    throw new ApiError(503, 'fixture_unavailable', 'Fixture not available from PlayHQ yet — try again later.');
+  }
   const game = fixture.games.find((g) => g.gameId === gameId);
   if (!game) throw new ApiError(404, 'game_not_found', "This game isn't in the team's fixture.");
   const service = phq(c);

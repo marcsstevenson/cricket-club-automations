@@ -74,6 +74,12 @@ describe('GET /api/teams/:slug/games/:gameId', () => {
     expect((await res.json<GamePage>()).start).toEqual({ available: false, result: null, candidates: [] });
   });
 
+  it('503s when the fixture is unavailable and nothing is cached', async () => {
+    const res = await call(createApp(testDeps({ fetch: fakeFetch(routes({ [`/v1/grades/${GRADE}/games`]: fail })).fetch })), '/api/teams/pumas/games/g2');
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ error: 'fixture_unavailable' });
+  });
+
   it('404s for a game that is not in the fixture', async () => {
     const res = await call(createApp(testDeps({ fetch: fakeFetch(routes()).fetch })), '/api/teams/pumas/games/nope');
     expect(res.status).toBe(404);
