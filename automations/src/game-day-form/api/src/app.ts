@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
+import { registerAdmin } from './routes/admin';
 import { registerGames } from './routes/games';
+import { registerList } from './routes/list';
 import { registerPhotos } from './routes/photos';
 import { registerReports } from './routes/reports';
 import { registerTeams } from './routes/teams';
@@ -21,6 +23,8 @@ export function createApp(deps: Deps) {
   registerGames(app);
   registerReports(app);
   registerPhotos(app);
+  registerList(app);
+  registerAdmin(app);
   // Route registrations are added here by later tasks.
 
   app.notFound((c) => c.json({ error: 'not_found', message: 'Not found.' }, 404));
