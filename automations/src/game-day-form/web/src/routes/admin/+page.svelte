@@ -24,9 +24,12 @@
         } catch {
           /* ignore */
         }
-      } else {
-        msg = res.status === 429 ? 'Too many attempts — wait a minute.' : 'Wrong passcode.';
-      }
+      } else if (res.status === 401) msg = 'Wrong passcode.';
+      else if (res.status === 429) msg = 'Too many attempts — wait a minute.';
+      else if (res.status === 503) msg = 'Admin exports are not configured.';
+      else msg = 'Something went wrong.';
+    } catch {
+      msg = 'Could not reach the server — check your connection.';
     } finally {
       busy = false;
     }
@@ -34,17 +37,24 @@
 
   async function download(name: 'games' | 'milestones') {
     msg = '';
-    const res = await fetch(`/api/admin/export/${name}.csv`, { headers: headers() });
-    if (!res.ok) {
-      msg = res.status === 429 ? 'Too many requests — wait a minute.' : 'Download failed.';
-      return;
+    try {
+      const res = await fetch(`/api/admin/export/${name}.csv`, { headers: headers() });
+      if (!res.ok) {
+        if (res.status === 401) {
+          ok = false;
+          msg = 'Wrong passcode — enter it again.';
+        } else msg = res.status === 429 ? 'Too many requests — wait a minute.' : 'Download failed.';
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}-full-names.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      msg = 'Could not reach the server — check your connection.';
     }
-    const url = URL.createObjectURL(await res.blob());
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${name}-full-names.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 </script>
 

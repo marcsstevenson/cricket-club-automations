@@ -47,6 +47,7 @@
   // Keep an on-device draft while the coach is editing (functional spec §7.4).
   $effect(() => {
     if (mode !== 'form' && mode !== 'review') return;
+    if (draftOffer) return; // keep the stored draft until the coach resumes or discards it
     const snap = JSON.stringify(form.state);
     if (snap === form.initialJson) return;
     const baseVersion = form.baseVersion;
