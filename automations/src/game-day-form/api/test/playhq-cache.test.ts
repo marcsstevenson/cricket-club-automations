@@ -88,10 +88,12 @@ describe('swr', () => {
 describe('playhqService', () => {
   it('treats a non-final summary as fresh for 15 minutes only', async () => {
     const f = fakeFetch({ '/v2/games/g1/summary': { data: summary({ id: 'g1', status: 'PENDING' }) } });
-    const svc = (offset: number) => playhqService(env, testDeps({ fetch: f.fetch, now: () => new Date(NOW.getTime() + offset) }), collector().waitUntil);
+    const c = collector();
+    const svc = (offset: number) => playhqService(env, testDeps({ fetch: f.fetch, now: () => new Date(NOW.getTime() + offset) }), c.waitUntil);
     await svc(0).summary('g1');
     expect((await svc(FIFTEEN_MIN - 1).summary('g1')).stale).toBe(false);
     expect((await svc(FIFTEEN_MIN + 1).summary('g1')).stale).toBe(true);
+    await c.settle();
   });
 
   it('treats a final summary and the fixture as fresh for 6 hours', async () => {
@@ -99,11 +101,13 @@ describe('playhqService', () => {
       '/v2/games/g1/summary': { data: summary({ id: 'g1' }) },
       '/v1/grades/gr/games': v1Page([]),
     });
-    const svc = (offset: number) => playhqService(env, testDeps({ fetch: f.fetch, now: () => new Date(NOW.getTime() + offset) }), collector().waitUntil);
+    const c = collector();
+    const svc = (offset: number) => playhqService(env, testDeps({ fetch: f.fetch, now: () => new Date(NOW.getTime() + offset) }), c.waitUntil);
     await svc(0).summary('g1');
     await svc(0).fixture('gr');
     expect((await svc(SIX_HOURS - 1).summary('g1')).stale).toBe(false);
     expect((await svc(SIX_HOURS - 1).fixture('gr')).stale).toBe(false);
     expect((await svc(SIX_HOURS + 1).fixture('gr')).stale).toBe(true);
+    await c.settle();
   });
 });

@@ -1,10 +1,12 @@
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { beforeEach } from 'vitest';
+import { resetSquadCache } from '../src/squad/load';
 
 await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 
 // vitest-pool-workers 0.22 no longer isolates storage per test; reset it so tests start from empty KV/R2/D1.
 beforeEach(async () => {
+  resetSquadCache();
   for (const { name } of (await env.CONFIG.list()).keys) await env.CONFIG.delete(name);
   const objects = await env.PHOTOS.list();
   if (objects.objects.length) await env.PHOTOS.delete(objects.objects.map((o) => o.key));
