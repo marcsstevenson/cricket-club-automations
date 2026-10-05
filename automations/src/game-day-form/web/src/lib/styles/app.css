@@ -13,7 +13,7 @@ a { color: var(--pcc-blue-700); }
 .site-header img { display: block; height: 40px; width: auto; }
 .site-header nav a { font-family: var(--font-head); font-weight: 700; text-transform: uppercase; text-decoration: none; color: var(--pcc-navy-700); }
 
-.hero, .team-band { background: var(--pcc-navy-700); color: #fff; margin: calc(-1 * var(--gutter)) calc(-1 * var(--gutter)) var(--gutter); padding: 24px var(--gutter); }
+.hero, .team-band { background: var(--pcc-navy-700); color: #fff; margin: 0 0 var(--gutter); padding: 24px var(--gutter); }
 .hero h1, .team-band h1 { color: var(--pcc-teal-400); }
 .team-band { display: flex; align-items: center; gap: 16px; }
 .team-band p { margin: 0; color: #fff; }
@@ -51,5 +51,6 @@ input[readonly] { background: var(--pcc-bg); border-style: dashed; }
 .badge-upcoming, .badge-not_reported { background: #ececec; color: var(--pcc-navy-900); }
 .badge-not_played { border-color: var(--pcc-grey-600); color: var(--pcc-navy-900); }
 
-.team-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-.team-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: var(--pcc-surface); border: 1px solid var(--pcc-grey-300); text-decoration: none; color: var(--pcc-navy-900); font-weight: 600; text-align: center; }
+.team-grid { list-style: none; padding: 0; margin: 0 0 var(--gutter); display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.team-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: var(--pcc-surface); border: 1px solid var(--pcc-grey-300); text-decoration: none; color: var(--pcc-navy-900); font-weight: 600; text-align: center; height: 100%; }
+.team-name { display: flex; align-items: center; justify-content: center; min-height: 3em; line-height: 1.5; }
