@@ -41,8 +41,10 @@
 </script>
 
 {#snippet refreshButton()}
-  <button type="button" class="btn-secondary" onclick={refresh} disabled={refreshing}>Refresh from PlayHQ</button>
-  {#if refreshMsg}<p class="note" role="status">{refreshMsg}</p>{/if}
+  <div class="refresh">
+    <button type="button" class="btn-secondary" onclick={refresh} disabled={refreshing}>Refresh from PlayHQ</button>
+    {#if refreshMsg}<p class="note" role="status">{refreshMsg}</p>{/if}
+  </div>
 {/snippet}
 
 <form novalidate onsubmit={(e) => { e.preventDefault(); onnext(); }}>
@@ -117,3 +119,7 @@
 
   <button type="submit" class="btn">Next: review</button>
 </form>
+
+<style>
+  .refresh { margin-top: 16px; }
+</style>
