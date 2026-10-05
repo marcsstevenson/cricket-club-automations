@@ -23,6 +23,12 @@ describe('squadLabels', () => {
     expect(l.get('p0413')).toBe('Sam L. (13)');
   });
 
+  it('falls back to the key ending when surnames differ only at the last letter', () => {
+    const l = squadLabels([p('p0001', 'Sam', 'Lee'), p('p0002', 'Sam', 'Les')]);
+    expect(l.get('p0001')).toBe('Sam L. (01)');
+    expect(l.get('p0002')).toBe('Sam L. (02)');
+  });
+
   it('never reveals a full surname when one surname is a prefix of another', () => {
     const l = squadLabels([p('p0001', 'Sam', 'Lee'), p('p0002', 'Sam', 'Leeson')]);
     expect(l.get('p0001')).toBe('Sam L. (01)');

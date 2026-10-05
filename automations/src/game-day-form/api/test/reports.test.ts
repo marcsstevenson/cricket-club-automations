@@ -39,6 +39,8 @@ describe('PUT report', () => {
     const body = await (await put(app(), 'g2', form({ scoring: 'no' }))).json<ReportOut>();
     expect(body.scoreSource).toBe('playhq');
     expect(body.scoring).toBe('yes');
+    const page = await (await call(app(), '/api/teams/pumas/games/g2')).json<GamePage>();
+    expect(page.report?.scoring).toBe('yes');
   });
 
   it('stores an unmatched PlayHQ player by id and labels them', async () => {
