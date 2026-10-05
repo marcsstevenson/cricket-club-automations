@@ -39,14 +39,17 @@
   {/each}
 </div>
 {#if form.state.photoIds.length < 5}
-  <label class="btn-secondary">
+  <label class="btn-secondary pick">
     {busy ? 'Uploading…' : 'Add photos'}
-    <input type="file" accept="image/*" multiple hidden disabled={busy} onchange={(e) => pick(e.currentTarget)} />
+    <input type="file" accept="image/*" multiple class="sr-only" disabled={busy} onchange={(e) => pick(e.currentTarget)} />
   </label>
 {/if}
 <FieldError msg={msg || form.errors.photoIds} />
 
 <style>
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .pick { position: relative; display: inline-block; cursor: pointer; }
+  .pick:focus-within { outline: 3px solid var(--pcc-teal-600); outline-offset: 2px; }
   .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
   figure { margin: 0; width: 96px; }
   img { width: 96px; height: 96px; object-fit: cover; border-radius: var(--radius); display: block; }

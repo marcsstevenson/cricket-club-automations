@@ -13,7 +13,12 @@
   }: { value: PlayerChoice | null; squad: { key: string; label: string }[]; id: string; label: string; error?: string; onedit?: () => void } = $props();
 
   // A saved or PlayHQ person who isn't in the squad stays selectable even after switching away.
-  const original = untrack(() => (value && (value.kind === 'named' || value.kind === 'playhq') ? $state.snapshot(value) : null));
+  type Kept = Extract<PlayerChoice, { kind: 'named' | 'playhq' }>;
+  const isKept = (v: PlayerChoice | null | undefined): v is Kept => !!v && (v.kind === 'named' || v.kind === 'playhq');
+  let original = $state<Kept | null>(untrack(() => (isKept(value) ? $state.snapshot(value) as Kept : null)));
+  $effect(() => {
+    if (isKept(value)) original = $state.snapshot(value) as Kept;
+  });
 
   const selected = $derived(
     !value ? '' : value.kind === 'squad' ? `s:${value.key}` : value.kind === 'other' ? 'other' : 'current',
