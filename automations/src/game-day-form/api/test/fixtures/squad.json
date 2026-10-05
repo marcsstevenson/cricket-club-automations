@@ -1,0 +1,25 @@
+{
+  "season": { "name": "Summer 2025/26", "playhqSeasonId": "season-test" },
+  "teams": [
+    {
+      "slug": "pumas",
+      "name": "Parklands Pumas",
+      "playhqTeamId": "team-pumas",
+      "playhqGradeId": "grade-y6",
+      "gradeName": "Year 6 Section 3 (Morning)",
+      "mascot": "pumas",
+      "players": [
+        { "key": "p001", "firstName": "Alex", "lastName": "Turner", "playhqId": "ph-alex" },
+        { "key": "p002", "firstName": "Sam", "lastName": "Thompson", "playhqId": "ph-sam" },
+        { "key": "p003", "firstName": "Sam", "lastName": "Taylor" },
+        { "key": "p004", "firstName": "Jordan", "lastName": "Lee", "playhqId": "ph-jordan" }
+      ]
+    },
+    {
+      "slug": "tigers",
+      "name": "Parklands Tigers",
+      "playhqTeamId": "team-tigers",
+      "players": []
+    }
+  ]
+}

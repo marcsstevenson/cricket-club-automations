@@ -8,3 +8,4 @@ assets-src/
 test-results/
 playwright-report/
 squad.json
+!api/test/fixtures/squad.json

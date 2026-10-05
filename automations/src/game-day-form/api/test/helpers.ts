@@ -1,6 +1,8 @@
 import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
 import type { createApp } from '../src/app';
 import type { Deps } from '../src/env';
+import squadFixture from './fixtures/squad.json';
+import { resetSquadCache } from '../src/squad/load';
 
 export const NOW = new Date('2026-02-01T00:00:00Z'); // 1 Feb 2026, 1 pm in NZ
 
@@ -22,4 +24,9 @@ export async function call(app: ReturnType<typeof createApp>, path: string, init
   const res = await app.request(path, init, env, ctx);
   await waitOnExecutionContext(ctx);
   return res;
+}
+
+export async function seedSquad(squad: unknown = squadFixture) {
+  resetSquadCache();
+  await env.CONFIG.put('squad', JSON.stringify(squad));
 }

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
+import { registerTeams } from './routes/teams';
 
 export function createApp(deps: Deps) {
   const app = new Hono<AppEnv>().basePath('/api');
@@ -13,6 +14,7 @@ export function createApp(deps: Deps) {
 
   app.get('/health', (c) => c.json({ ok: true }));
 
+  registerTeams(app);
   // Route registrations are added here by later tasks.
 
   app.notFound((c) => c.json({ error: 'not_found', message: 'Not found.' }, 404));
