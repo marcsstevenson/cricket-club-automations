@@ -10,10 +10,10 @@
     "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "pcc-game-day", "database_id": "local-placeholder", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "pcc-game-day", "database_id": "c6048a56-7638-4c82-aafb-8c9baf840ce3", "migrations_dir": "migrations" }
   ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "pcc-game-day-photos" }],
-  "kv_namespaces": [{ "binding": "CONFIG", "id": "local-placeholder" }],
+  "kv_namespaces": [{ "binding": "CONFIG", "id": "0e3a0b0b495a4e43bdfee18ab1aee82f" }],
   "ratelimits": [
     { "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
     { "name": "REFRESH_LIMIT", "namespace_id": "1002", "simple": { "limit": 1, "period": 60 } },
