@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pcc-game-day",
+  "main": "api/src/index.ts",
+  "compatibility_date": "2026-10-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./web/build",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "pcc-game-day", "database_id": "local-placeholder", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "pcc-game-day-photos" }],
+  "kv_namespaces": [{ "binding": "CONFIG", "id": "local-placeholder" }],
+  "ratelimits": [
+    { "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
+    { "name": "REFRESH_LIMIT", "namespace_id": "1002", "simple": { "limit": 1, "period": 60 } },
+    { "name": "ADMIN_LIMIT", "namespace_id": "1003", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "triggers": { "crons": ["0 14 * * *"] },
+  "vars": {
+    "PLAYHQ_TENANT": "nzc",
+    "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",
+    "PLAYHQ_BASE_URL": "https://api.playhq.com"
+  },
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,10 @@
+node_modules/
+.wrangler/
+.dev.vars
+web/build/
+web/.svelte-kit/
+web/node_modules/
+assets-src/
+test-results/
+playwright-report/
+squad.json

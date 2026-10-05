@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `wrangler dev`. Never commit .dev.vars.
+PLAYHQ_API_KEY=
+ADMIN_PASSCODE=letmein

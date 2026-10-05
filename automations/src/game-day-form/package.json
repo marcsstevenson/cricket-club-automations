@@ -1,0 +1,31 @@
+{
+  "name": "pcc-game-day",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:web": "npm --prefix web run build",
+    "build": "npm run build:web",
+    "dev": "npm run build:web && wrangler dev",
+    "dev:web": "npm --prefix web run dev",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && npm --prefix web run check",
+    "mascots": "tsx scripts/prepare-mascots.ts",
+    "e2e:prepare": "node -e \"require('fs').rmSync('.wrangler/state',{recursive:true,force:true})\" && npm run build:web && wrangler d1 migrations apply pcc-game-day --local && wrangler kv key put squad --path=api/test/fixtures/squad.json --binding=CONFIG --local",
+    "e2e": "playwright test",
+    "deploy": "npm run build && wrangler d1 migrations apply pcc-game-day --remote && wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.13.13",
+    "valibot": "^1.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20261005.1",
+    "@playwright/test": "^1.63.0",
+    "sharp": "^0.35.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
+  }
+}

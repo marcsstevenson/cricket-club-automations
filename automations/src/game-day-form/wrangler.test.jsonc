@@ -1,0 +1,10 @@
+{
+  "name": "pcc-game-day-test",
+  "main": "api/src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{ "binding": "DB", "database_name": "test", "database_id": "test" }],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "test" }],
+  "kv_namespaces": [{ "binding": "CONFIG", "id": "test" }],
+  "vars": { "PLAYHQ_TENANT": "nzc", "PLAYHQ_ORG_ID": "org-test", "PLAYHQ_BASE_URL": "https://api.playhq.com" }
+}
