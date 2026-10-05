@@ -17,7 +17,11 @@ const THIRTY_DAYS_S = 30 * 24 * 3600;
 
 async function refresh<T>(o: SwrOptions<T>): Promise<T> {
   const data = await o.load();
-  await o.kv.put(o.key, JSON.stringify({ fetchedAt: o.now, data } satisfies Entry<T>), { expirationTtl: THIRTY_DAYS_S });
+  try {
+    await o.kv.put(o.key, JSON.stringify({ fetchedAt: o.now, data } satisfies Entry<T>), { expirationTtl: THIRTY_DAYS_S });
+  } catch (err) {
+    console.warn(JSON.stringify({ msg: 'playhq_cache_write_failed', key: o.key, error: String(err) }));
+  }
   return data;
 }
 

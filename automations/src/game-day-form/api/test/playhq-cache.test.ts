@@ -72,6 +72,12 @@ describe('swr', () => {
     await expect(swr({ ...base, now: 0, load: async () => { throw new Error('down'); }, waitUntil: collector().waitUntil })).rejects.toThrow('down');
   });
 
+  it('returns the loaded data when the cache write fails', async () => {
+    const kv = { get: async () => null, put: async () => { throw new Error('KV put limit'); } } as unknown as KVNamespace;
+    const r = await swr({ ...base, kv, now: 0, load: async () => 'v1', waitUntil: collector().waitUntil });
+    expect(r).toEqual({ data: 'v1', stale: false });
+  });
+
   it('bypasses the cache when forced', async () => {
     await env.CONFIG.put('k', JSON.stringify({ fetchedAt: 0, data: 'old' }));
     const r = await swr({ ...base, now: 1, force: true, load: async () => 'new', waitUntil: collector().waitUntil });
