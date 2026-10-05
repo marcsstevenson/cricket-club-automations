@@ -1,3 +1,4 @@
+import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { GamesList } from '../../shared/src/api';
 import { createApp } from '../src/app';
@@ -56,6 +57,7 @@ describe('exports', () => {
     const app = await seeded();
     const res = await call(app, '/api/admin/export/games.csv', { headers: { 'x-admin-passcode': 'letmein' } });
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
     expect(res.headers.get('content-disposition')).toContain('games-full-names.csv');
     const text = await res.text();
     expect(text).toContain('Alex Turner');
@@ -68,5 +70,18 @@ describe('exports', () => {
     expect((await call(app, '/api/admin/check', { headers: { 'x-admin-passcode': 'letmein' } })).status).toBe(200);
     const limited = createApp(testDeps({ limit: async (_e, name) => name !== 'ADMIN_LIMIT' }));
     expect((await call(limited, '/api/admin/check', { headers: { 'x-admin-passcode': 'letmein' } })).status).toBe(429);
+  });
+
+  it('fails closed when the passcode secret is not configured', async () => {
+    const ctx = createExecutionContext();
+    const res = await createApp(testDeps()).request('/api/admin/check', {}, { ...env, ADMIN_PASSCODE: '' }, ctx);
+    await waitOnExecutionContext(ctx);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ error: 'admin_disabled' });
+  });
+
+  it('sends no-store on the admin check', async () => {
+    const res = await call(createApp(testDeps()), '/api/admin/check', { headers: { 'x-admin-passcode': 'letmein' } });
+    expect(res.headers.get('cache-control')).toBe('no-store');
   });
 });

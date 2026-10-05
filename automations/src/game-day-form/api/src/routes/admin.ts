@@ -10,12 +10,19 @@ async function safeEqual(a: string, b: string): Promise<boolean> {
 }
 
 async function requireAdmin(c: Context<AppEnv>) {
+  c.header('cache-control', 'no-store');
+  if (!c.env.ADMIN_PASSCODE) throw new ApiError(503, 'admin_disabled', 'Admin exports are not configured.');
   if (!(await c.get('deps').limit(c.env, 'ADMIN_LIMIT', clientIp(c.req.header('cf-connecting-ip'))))) {
     throw new ApiError(429, 'rate_limited', 'Too many attempts — wait a minute and try again.');
   }
   if (!(await safeEqual(c.req.header('x-admin-passcode') ?? '', c.env.ADMIN_PASSCODE))) {
     throw new ApiError(401, 'unauthorised', 'Wrong passcode.');
   }
+}
+
+function noStore(res: Response) {
+  res.headers.set('cache-control', 'no-store');
+  return res;
 }
 
 export function registerAdmin(app: Hono<AppEnv>) {
@@ -25,10 +32,10 @@ export function registerAdmin(app: Hono<AppEnv>) {
   });
   app.get('/admin/export/games.csv', async (c) => {
     await requireAdmin(c);
-    return csvResponse(gamesCsv(await allRows(c), new URL(c.req.url).origin, true), 'games-full-names.csv');
+    return noStore(csvResponse(gamesCsv(await allRows(c), new URL(c.req.url).origin, true), 'games-full-names.csv'));
   });
   app.get('/admin/export/milestones.csv', async (c) => {
     await requireAdmin(c);
-    return csvResponse(milestonesCsv(await allRows(c), true), 'milestones-full-names.csv');
+    return noStore(csvResponse(milestonesCsv(await allRows(c), true), 'milestones-full-names.csv'));
   });
 }
