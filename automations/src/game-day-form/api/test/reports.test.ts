@@ -35,6 +35,12 @@ describe('PUT report', () => {
     expect(body.scoreSource).toBe('playhq');
   });
 
+  it('stores scoring yes when PlayHQ has the result and the client sent no', async () => {
+    const body = await (await put(app(), 'g2', form({ scoring: 'no' }))).json<ReportOut>();
+    expect(body.scoreSource).toBe('playhq');
+    expect(body.scoring).toBe('yes');
+  });
+
   it('stores an unmatched PlayHQ player by id and labels them', async () => {
     const body = await (
       await put(app(), 'g2', form({

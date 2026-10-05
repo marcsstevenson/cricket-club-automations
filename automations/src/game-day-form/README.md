@@ -21,6 +21,13 @@ npm run typecheck   # tsc + svelte-check
 npm run e2e         # Playwright against wrangler dev + PlayHQ stub
 ```
 
+End-to-end prerequisites:
+
+- Create `.dev.vars` from `.dev.vars.example`.
+- Run `npx playwright install chromium` once.
+- Port 8787 must be free.
+- `npm run e2e` wipes local `.wrangler/state` (your local dev data).
+
 ## Squad data
 
 The squad JSON (format in `docs/technical-design.md` §4.2) is never committed. Upload it with:
@@ -39,6 +46,21 @@ Download *Team certs and mascots/Mascots* from SharePoint into `assets-src/masco
 
 ```bash
 npm run deploy      # build SPA, apply D1 migrations, wrangler deploy
+```
+
+## First deploy
+
+One-time setup. `wrangler.jsonc` ships with placeholder ids; replace them before deploying.
+
+```bash
+npx wrangler login
+npx wrangler d1 create pcc-game-day              # paste database_id into wrangler.jsonc
+npx wrangler r2 bucket create pcc-game-day-photos
+npx wrangler kv namespace create CONFIG          # paste id into wrangler.jsonc
+npx wrangler secret put PLAYHQ_API_KEY
+npx wrangler secret put ADMIN_PASSCODE
+npx wrangler kv key put squad --path=squad.json --binding=CONFIG --remote
+npm run deploy
 ```
 
 ## New season

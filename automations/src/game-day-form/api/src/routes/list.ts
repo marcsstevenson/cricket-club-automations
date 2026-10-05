@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import type { GamesList } from '../../../shared/src/api';
+import type { GameRow, GamesList } from '../../../shared/src/api';
 import { nzDate } from '../../../shared/src/dates';
 import { squadLabels } from '../../../shared/src/labels';
 import { MILESTONE_TEXT, REASON_TEXT, SCORING_TEXT, STATUS_TEXT } from '../../../shared/src/text';
@@ -85,13 +85,23 @@ export function milestonesCsv(rows: Row[], admin: boolean): string {
 
 export const csvResponse = (text: string, filename: string) =>
   new Response(text, {
-    headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="${filename}"` },
+    headers: {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="${filename}"`,
+      'x-robots-tag': 'noindex',
+    },
   });
 
 export function registerList(app: Hono<AppEnv>) {
   app.get('/games', async (c) => {
     const rows = await allRows(c);
-    const body: GamesList = { today: nzDate(c.get('deps').now()), rows: rows.map(({ report: _r, team: _t, ...row }) => row) };
+    const body: GamesList = { today: nzDate(c.get('deps').now()), rows: rows.map((row): GameRow => ({
+        gameId: row.gameId, teamSlug: row.teamSlug, teamName: row.teamName, date: row.date, dateLabel: row.dateLabel,
+        round: row.round, opposition: row.opposition, venue: row.venue, status: row.status, scoring: row.scoring,
+        issues: row.issues, notPlayedReason: row.notPlayedReason, notPlayedOther: row.notPlayedOther, score: row.score,
+        potd: row.potd, mascot: row.mascot, milestoneCount: row.milestoneCount,
+      })),
+    };
     return c.json(body);
   });
   app.get('/export/games.csv', async (c) => csvResponse(gamesCsv(await allRows(c), new URL(c.req.url).origin, false), 'games.csv'));

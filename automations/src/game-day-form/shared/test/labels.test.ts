@@ -19,8 +19,14 @@ describe('squadLabels', () => {
 
   it('appends the key ending when names are identical', () => {
     const l = squadLabels([p('p0412', 'Sam', 'Lee'), p('p0413', 'Sam', 'Lee')]);
-    expect(l.get('p0412')).toBe('Sam Lee. (12)');
-    expect(l.get('p0413')).toBe('Sam Lee. (13)');
+    expect(l.get('p0412')).toBe('Sam L. (12)');
+    expect(l.get('p0413')).toBe('Sam L. (13)');
+  });
+
+  it('never reveals a full surname when one surname is a prefix of another', () => {
+    const l = squadLabels([p('p0001', 'Sam', 'Lee'), p('p0002', 'Sam', 'Leeson')]);
+    expect(l.get('p0001')).toBe('Sam L. (01)');
+    expect(l.get('p0002')).toBe('Sam Lees.');
   });
 
   it('treats first names case-insensitively when grouping', () => {

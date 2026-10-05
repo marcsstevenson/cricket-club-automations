@@ -26,8 +26,9 @@ export function squadLabels(players: SquadPlayer[]): Map<string, string> {
       const lower = last.toLowerCase();
       const others = group.filter((q) => q !== p).map((q) => q.lastName.trim().toLowerCase());
       let n = 1;
-      while (n <= last.length && others.some((o) => o.slice(0, n) === lower.slice(0, n))) n++;
-      out.set(p.key, n <= last.length ? prefixLabel(first, last, n) : `${prefixLabel(first, last, last.length)} (${p.key.slice(-2)})`);
+      while (n < last.length && others.some((o) => o.slice(0, n) === lower.slice(0, n))) n++;
+      const distinct = n < last.length || !others.some((o) => o.slice(0, n) === lower.slice(0, n));
+      out.set(p.key, distinct ? prefixLabel(first, last, n) : `${prefixLabel(first, last, 1)} (${p.key.slice(-2)})`);
     }
   }
   return out;

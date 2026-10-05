@@ -7,6 +7,7 @@ export function createPlayhqClient(env: Env, fetchFn: typeof fetch) {
   async function get<T>(path: string): Promise<T> {
     const res = await fetchFn(`${env.PLAYHQ_BASE_URL}${path}`, {
       headers: { 'x-api-key': env.PLAYHQ_API_KEY, 'x-phq-tenant': env.PLAYHQ_TENANT },
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) throw new PlayhqError(`PlayHQ ${res.status} for ${path}`);
     return res.json<T>();

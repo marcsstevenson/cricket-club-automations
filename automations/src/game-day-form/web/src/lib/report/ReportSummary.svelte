@@ -41,15 +41,13 @@
     <p>Mascot of the day: <strong>{who(report.mascot)}</strong></p>
   </section>
 
-  {#if report.highlights || report.photoIds.length}
-    <section class="card">
-      {@render head('Highlights', 'sec-highlights')}
-      {#if report.highlights}<p class="pre">{report.highlights}</p>{/if}
-      <div class="thumbs">
-        {#each report.photoIds as id (id)}<img src="/api/photos/{id}" alt="Highlight from the game" loading="lazy" />{/each}
-      </div>
-    </section>
-  {/if}
+  <section class="card">
+    {@render head('Highlights', 'sec-highlights')}
+    <p class="pre">{report.highlights || 'None'}</p>
+    <div class="thumbs">
+      {#each report.photoIds as id (id)}<img src="/api/photos/{id}" alt="Highlight from the game" loading="lazy" />{/each}
+    </div>
+  </section>
 
   <section class="card">
     {@render head('Milestones', 'sec-milestones')}
@@ -64,6 +62,11 @@
     {/if}
   </section>
 {/if}
+
+<section class="card">
+  {@render head('Your name', 'sec-name')}
+  <p>{report.updatedBy || '—'}</p>
+</section>
 
 <style>
   .row { display: flex; justify-content: space-between; align-items: baseline; }

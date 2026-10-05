@@ -35,7 +35,10 @@ export function registerPhotos(app: Hono<AppEnv>) {
     const obj = await c.env.PHOTOS.get(row.r2_key);
     if (!obj) throw new ApiError(404, 'not_found', 'Photo not found.');
     return new Response(obj.body, {
-      headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000, immutable' },
+      headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000, immutable',
+        'x-content-type-options': 'nosniff',
+        'x-robots-tag': 'noindex',
+      },
     });
   });
 }

@@ -86,7 +86,7 @@ export function registerReports(app: Hono<AppEnv>) {
         teamSlug: ctx.team.slug,
         gameId: ctx.game.gameId,
         gameDate: ctx.game.date!,
-        scoring: body.scoring!,
+        scoring: played && result && body.scoring === 'no' ? 'yes' : body.scoring!,
         issues: body.scoring === 'yes_issues' ? body.issues.trim() : null,
         notPlayedReason: played ? null : body.notPlayedReason,
         notPlayedOther: !played && body.notPlayedReason === 'other' ? body.notPlayedOther.trim() : null,

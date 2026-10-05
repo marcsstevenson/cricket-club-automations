@@ -371,8 +371,7 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 - `gameId` is in the team's fixture and its date is on or before NZ today.
 - Squad keys exist in this team; `named` IDs belong to this report; `playhq` IDs are in this game's summary.
 - If PlayHQ has the result (from cache/fetch at save time), stored scores come from PlayHQ and `score_source =
-  'playhq'`; client-sent scores are ignored. If PlayHQ is unreachable at save time, client scores are accepted only
-  when the client marks them `entered`.
+  'playhq'`; client-sent scores are ignored. Otherwise the coach's validated scores are stored with score_source = 'entered'.
 - At most 5 photo IDs; each exists and is unattached or attached to this report.
 - Save is one D1 `batch()`: upsert report (incrementing `version`), replace milestones, attach/detach photos, insert
   `named_players` rows, insert `report_versions` snapshot.
