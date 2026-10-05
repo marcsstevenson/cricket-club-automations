@@ -106,7 +106,7 @@
     <fieldset class="card" id="sec-milestones">
       <legend>Milestones</legend>
       <MilestoneList {form} type="bat" squad={team.squad} title="Batting milestone" valueLabel="Runs (25 or more)" />
-      <MilestoneList {form} type="bowl" squad={team.squad} title="Bowling milestone" valueLabel="Wickets (3 to 19)" maxDigits={2} />
+      <MilestoneList {form} type="bowl" squad={team.squad} title="Bowling milestone" valueLabel="Wickets (3+)" maxDigits={2} />
       <MilestoneList {form} type="hattrick" squad={team.squad} title="Hat-trick" />
       {@render refreshButton()}
     </fieldset>
