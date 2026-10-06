@@ -45,6 +45,7 @@ function makeRow(team: Team, g: FixtureGame, r: StoredReport | null, today: stri
     potd: r ? person(r.potdKey, r.potdNamedId, r, team, labels).label || null : null,
     mascot: r ? person(r.mascotKey, r.mascotNamedId, r, team, labels).label || null : null,
     milestoneCount: r?.milestones.length ?? 0,
+    uncheckedCount: r?.milestones.filter((m) => m.check && !m.check.checked).length ?? 0,
     report: r,
     team,
   };
@@ -87,6 +88,6 @@ export function applyFilters(rows: Row[], q: URLSearchParams): Row[] {
     (r) =>
       (!team || r.teamSlug === team) &&
       (!statuses.length || statuses.includes(r.status)) &&
-      (!followUp || r.scoring === 'no' || r.scoring === 'yes_issues'),
+      (!followUp || r.scoring === 'no' || r.scoring === 'yes_issues' || r.uncheckedCount > 0),
   );
 }

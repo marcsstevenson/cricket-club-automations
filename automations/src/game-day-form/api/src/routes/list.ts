@@ -67,7 +67,7 @@ export function gamesCsv(rows: Row[], origin: string, admin: boolean): string {
 }
 
 export function milestonesCsv(rows: Row[], admin: boolean): string {
-  const header = ['Date', 'Team', 'Opposition', 'Player', 'Player ID', 'Player is Other', 'Type', 'Runs or wickets', 'Source', ...(admin ? ['Full name'] : [])];
+  const header = ['Date', 'Team', 'Opposition', 'Player', 'Player ID', 'Player is Other', 'Type', 'Runs or wickets', 'Source', 'Check', ...(admin ? ['Full name'] : [])];
   const body: Cell[][] = [];
   for (const row of rows) {
     if (!row.report) continue;
@@ -76,7 +76,7 @@ export function milestonesCsv(rows: Row[], admin: boolean): string {
       const p = person(m.playerKey, m.namedId, row.report, row.team, labels);
       body.push([
         row.date, row.teamName, row.opposition, p.label, p.id, yn(p.isOther), MILESTONE_TEXT[m.type], m.value,
-        m.source === 'playhq' ? 'PlayHQ' : 'Entered', ...(admin ? [p.fullName] : []),
+        m.source === 'playhq' ? 'PlayHQ' : 'Entered', m.check ? (m.check.checked ? 'Checked' : 'Needs check') : '', ...(admin ? [p.fullName] : []),
       ]);
     }
   }
@@ -99,7 +99,7 @@ export function registerList(app: Hono<AppEnv>) {
         gameId: row.gameId, teamSlug: row.teamSlug, teamName: row.teamName, date: row.date, dateLabel: row.dateLabel,
         round: row.round, opposition: row.opposition, venue: row.venue, status: row.status, scoring: row.scoring,
         issues: row.issues, notPlayedReason: row.notPlayedReason, notPlayedOther: row.notPlayedOther, score: row.score,
-        potd: row.potd, mascot: row.mascot, milestoneCount: row.milestoneCount,
+        potd: row.potd, mascot: row.mascot, milestoneCount: row.milestoneCount, uncheckedCount: row.uncheckedCount,
       })),
     };
     return c.json(body);

@@ -61,6 +61,7 @@ export interface GameRow {
   potd: string | null;
   mascot: string | null;
   milestoneCount: number;
+  uncheckedCount: number;
 }
 
 export interface GamesList {

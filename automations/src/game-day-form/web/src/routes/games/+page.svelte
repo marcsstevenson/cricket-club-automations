@@ -86,7 +86,7 @@
             <td>{r.score ?? ''}</td>
             <td>{r.potd ?? ''}</td>
             <td>{r.mascot ?? ''}</td>
-            <td>{r.milestoneCount || ''}</td>
+            <td>{r.milestoneCount || ''}{r.uncheckedCount ? ` (${r.uncheckedCount} to check)` : ''}</td>
           </tr>
         {:else}
           <tr><td colspan="9">No games match these filters.</td></tr>

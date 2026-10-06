@@ -4,6 +4,7 @@ import type { GamesList } from '../../shared/src/api';
 import { createApp } from '../src/app';
 import { form, pumasRoutes, put } from './builders';
 import { call, seedSquad, testDeps } from './helpers';
+import { summary } from './fixtures/playhq';
 
 async function seeded() {
   await seedSquad();
@@ -83,5 +84,38 @@ describe('exports', () => {
   it('sends no-store on the admin check', async () => {
     const res = await call(createApp(testDeps()), '/api/admin/check', { headers: { 'x-admin-passcode': 'letmein' } });
     expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+});
+
+describe('unchecked milestone flags', () => {
+  beforeEach(() => seedSquad());
+
+  async function flagged() {
+    const routes = pumasRoutes({
+      '/v2/games/g2/summary': {
+        data: summary({ id: 'g2', team: { runs: 120, wkts: 0 }, opp: { runs: 89, wkts: 0 }, overLimit: 16, bowling: [{ id: 'ph-jordan', wkts: 3, overs: 3 }] }),
+      },
+    });
+    const app = createApp(testDeps({ fetch: routes.fetch }));
+    await put(app, 'g2', form({
+      scoring: 'yes',
+      milestones: [{ rowId: 'x', type: 'bowl', player: { kind: 'squad', key: 'p004' }, value: 3, source: 'playhq', playhqValue: 3, touched: false }],
+    }));
+    return app;
+  }
+
+  it('counts unchecked flags and includes them in follow-up', async () => {
+    const app = await flagged();
+    const body = await (await call(app, '/api/games')).json<GamesList>();
+    expect(body.rows.find((r) => r.gameId === 'g2')).toMatchObject({ milestoneCount: 1, uncheckedCount: 1 });
+    const followUp = await (await call(app, '/api/games?followUp=1')).json<GamesList>();
+    expect(followUp.rows.map((r) => r.gameId)).toEqual(['g2']);
+  });
+
+  it('adds a Check column to milestones.csv', async () => {
+    const app = await flagged();
+    const csv = await (await call(app, '/api/export/milestones.csv')).text();
+    expect(csv).toContain('Type,Runs or wickets,Source,Check');
+    expect(csv).toContain('Jordan L.,p004,N,Bowling,3,PlayHQ,Needs check');
   });
 });
