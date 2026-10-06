@@ -71,7 +71,7 @@ export function registerReports(app: Hono<AppEnv>) {
       throw new ApiError(422, 'validation_failed', 'Please fix the highlighted answers.', { fields: r.fields });
     }
 
-    const result = summary ? startData(summary, ctx.team, ctx.labels).result : null;
+    const result = summary ? startData(summary, ctx.team, ctx.labels, ctx.game.date).result : null;
     const scores = !played
       ? { teamRuns: null, teamWkts: null, oppRuns: null, oppWkts: null, scoreSource: null }
       : result

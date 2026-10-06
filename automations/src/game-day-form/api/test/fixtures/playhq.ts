@@ -25,20 +25,24 @@ export const v1Page = (games: V1Game[], nextCursor: string | null = null) => ({
 
 type Totals = { runs: number; wkts: number };
 const st = (pairs: [string, number][]) => pairs.map(([type, value]) => ({ type, value }));
-const totals = (t?: Totals | null) => (t ? st([['TOTAL_SCORE', t.runs], ['TOTAL_OUTS', t.wkts]]) : []);
+const totals = (t?: Totals | null, overLimit?: number) =>
+  t ? st([['TOTAL_SCORE', t.runs], ['TOTAL_OUTS', t.wkts], ...(overLimit !== undefined ? [['OVER_LIMIT', overLimit] as [string, number]] : [])]) : [];
 
 export function summary(o: {
   id: string;
   status?: string;
   team?: Totals | null;
   opp?: Totals | null;
-  batting?: { id: string; runs: number }[];
-  bowling?: { id: string; wkts: number }[];
+  batting?: { id: string; runs: number; balls?: number }[];
+  bowling?: { id: string; wkts: number; overs?: number }[];
   appearances?: { id: string; firstName: string | null; lastName: string | null }[];
+  overLimit?: number;
+  grade?: string;
 }): V2Summary {
   return {
     id: o.id,
     status: o.status ?? 'FINAL',
+    grade: o.grade ? { id: 'grade-y6', name: o.grade } : undefined,
     teams: [
       { id: PUMAS, name: 'Parklands Pumas' },
       { id: OPP, name: 'Syd Martin Scorchers' },
@@ -49,12 +53,15 @@ export function summary(o: {
         name: 'FIRST_INNINGS',
         sequenceNo: 1,
         teams: [
-          { id: OPP, discipline: 'BATTING', statistics: totals(o.opp), appearances: [] },
+          { id: OPP, discipline: 'BATTING', statistics: totals(o.opp, o.overLimit), appearances: [] },
           {
             id: PUMAS,
             discipline: 'BOWLING',
             statistics: [],
-            appearances: (o.bowling ?? []).map((b) => ({ id: b.id, statistics: st([['WICKETS', b.wkts]]) })),
+            appearances: (o.bowling ?? []).map((b) => ({
+              id: b.id,
+              statistics: st([['WICKETS', b.wkts], ...(b.overs !== undefined ? [['OVERS', b.overs] as [string, number]] : [])]),
+            })),
           },
         ],
       },
@@ -65,8 +72,11 @@ export function summary(o: {
           {
             id: PUMAS,
             discipline: 'BATTING',
-            statistics: totals(o.team),
-            appearances: (o.batting ?? []).map((b) => ({ id: b.id, statistics: st([['TOTAL_RUNS', b.runs]]) })),
+            statistics: totals(o.team, o.overLimit),
+            appearances: (o.batting ?? []).map((b) => ({
+              id: b.id,
+              statistics: st([['TOTAL_RUNS', b.runs], ...(b.balls !== undefined ? [['BALLS_FACED', b.balls] as [string, number]] : [])]),
+            })),
           },
           { id: OPP, discipline: 'BOWLING', statistics: [], appearances: [] },
         ],

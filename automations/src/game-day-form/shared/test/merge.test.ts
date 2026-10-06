@@ -15,6 +15,8 @@ const start = (over: Partial<PlayhqStartData> = {}): PlayhqStartData => ({
   available: true,
   result: { team: { runs: 145, wkts: 4 }, opp: { runs: 131, wkts: 4 } },
   candidates: [],
+  rule: { kind: 'open' },
+  figures: [],
   ...over,
 });
 

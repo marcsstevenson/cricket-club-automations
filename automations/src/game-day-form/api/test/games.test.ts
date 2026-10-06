@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { GamePage, RefreshResult } from '../../shared/src/api';
 import { createApp } from '../src/app';
-import { startData } from '../src/playhq/summary';
+import { startData, unavailableStart } from '../src/playhq/summary';
 import { findTeam, parseSquad } from '../src/squad/load';
 import { squadLabels } from '../../shared/src/labels';
 import squadFixture from './fixtures/squad.json';
 import { fail, fakeFetch, GRADE, summary, v1Game, v1Page } from './fixtures/playhq';
 import { call, seedSquad, testDeps } from './helpers';
+import { form, put } from './builders';
 
 const team = findTeam(parseSquad(squadFixture), 'pumas');
 const labels = squadLabels(team.players);
@@ -25,11 +26,11 @@ const full = summary({
 
 describe('startData', () => {
   it('reads both final scores', () => {
-    expect(startData(full, team, labels).result).toEqual({ team: { runs: 145, wkts: 4 }, opp: { runs: 128, wkts: 4 } });
+    expect(startData(full, team, labels, '2026-01-31').result).toEqual({ team: { runs: 145, wkts: 4 }, opp: { runs: 128, wkts: 4 } });
   });
 
   it('finds milestones for this team only, within the limits', () => {
-    expect(startData(full, team, labels).candidates).toEqual([
+    expect(startData(full, team, labels, '2026-01-31').candidates).toEqual([
       { type: 'bat', player: { kind: 'squad', key: 'p001', label: 'Alex T.' }, value: 31 },
       { type: 'bat', player: { kind: 'playhq', playhqId: 'ph-fill', label: 'Kim W. (not in squad)' }, value: 27 },
       { type: 'bowl', player: { kind: 'squad', key: 'p004', label: 'Jordan L.' }, value: 3 },
@@ -37,16 +38,59 @@ describe('startData', () => {
   });
 
   it('has no result while the game is not final', () => {
-    expect(startData({ ...full, status: 'PENDING' }, team, labels).result).toBeNull();
+    expect(startData({ ...full, status: 'PENDING' }, team, labels, '2026-01-31').result).toBeNull();
   });
 
   it('has no result when only one innings has a total (abandoned or in progress)', () => {
-    expect(startData(summary({ id: 'g', team: { runs: 50, wkts: 2 }, opp: null }), team, labels).result).toBeNull();
+    expect(startData(summary({ id: 'g', team: { runs: 50, wkts: 2 }, opp: null }), team, labels, '2026-01-31').result).toBeNull();
   });
 
   it('labels an unnamed hidden PlayHQ player without leaking anything', () => {
     const s = summary({ id: 'g', batting: [{ id: 'ph-hidden', runs: 40 }], appearances: [{ id: 'ph-hidden', firstName: null, lastName: null }] });
-    expect(startData(s, team, labels).candidates[0].player.label).toBe('Unnamed player (not in squad)');
+    expect(startData(s, team, labels, '2026-01-31').candidates[0].player.label).toBe('Unnamed player (not in squad)');
+  });
+});
+
+describe('startData — milestone rule and figures', () => {
+  const pairs = summary({
+    id: 'g4',
+    team: { runs: 120, wkts: 0 },
+    opp: { runs: 89, wkts: 0 },
+    overLimit: 16,
+    grade: 'Year 4 North - Section 2',
+    batting: [{ id: 'ph-alex', runs: 26, balls: 16 }, { id: 'ph-fill', runs: 10, balls: 12 }],
+    bowling: [{ id: 'ph-jordan', wkts: 3, overs: 3 }, { id: 'ph-sam', wkts: 0, overs: 2 }],
+    appearances: [{ id: 'ph-fill', firstName: 'Kim', lastName: 'Walker' }],
+  });
+
+  it('picks the rule from the over limit and grade name', () => {
+    expect(startData(pairs, team, labels, '2026-03-21').rule).toEqual({ kind: 'pairs', batBalls: 12, bowlOvers: 2 });
+    expect(startData({ ...pairs, grade: null }, team, labels, '2026-03-21').rule).toEqual({ kind: 'pairs', batBalls: 12, bowlOvers: 2 });
+    const twenty = summary({ id: 'g5', team: { runs: 1, wkts: 0 }, opp: { runs: 1, wkts: 0 }, overLimit: 20 });
+    // No grade on the summary → squad gradeName "Year 6 Section 3 (Morning)"; after Christmas → open.
+    expect(startData(twenty, team, labels, '2026-01-31').rule).toEqual({ kind: 'open' });
+    expect(startData(twenty, team, labels, '2025-11-01').rule).toEqual({ kind: 'pairs', batBalls: 15, bowlOvers: 2 });
+  });
+
+  it('lists balls faced and overs bowled for this team, with labels only', () => {
+    const s = startData(pairs, team, labels, '2026-03-21');
+    expect(s.figures).toEqual(
+      expect.arrayContaining([
+        { player: { kind: 'squad', key: 'p001', label: 'Alex T.' }, ballsFaced: 16, overs: null },
+        { player: { kind: 'playhq', playhqId: 'ph-fill', label: 'Kim W. (not in squad)' }, ballsFaced: 12, overs: null },
+        { player: { kind: 'squad', key: 'p004', label: 'Jordan L.' }, ballsFaced: null, overs: 3 },
+        { player: { kind: 'squad', key: 'p002', label: 'Sam Th.' }, ballsFaced: null, overs: 2 },
+      ]),
+    );
+    expect(s.figures).toHaveLength(4);
+    expect(JSON.stringify(s)).not.toMatch(/Walker|Turner/);
+  });
+
+  it('uses the squad grade name when PlayHQ is unavailable', () => {
+    const tigers = findTeam(parseSquad({ ...squadFixture, teams: [{ ...squadFixture.teams[1], gradeName: 'Year 3' }] }), 'tigers');
+    expect(unavailableStart(tigers, '2026-01-31')).toEqual({
+      available: false, result: null, candidates: [], figures: [], rule: { kind: 'pairs', batBalls: 12, bowlOvers: 2 },
+    });
   });
 });
 
@@ -65,13 +109,22 @@ describe('GET /api/teams/:slug/games/:gameId', () => {
     expect(res.status).toBe(200);
     expect(body.report).toBeNull();
     expect(body.game.gameId).toBe('g2');
-    expect(body.start?.result?.team).toEqual({ runs: 145, wkts: 4 });
+    expect(body.start.result?.team).toEqual({ runs: 145, wkts: 4 });
     expect(JSON.stringify(body)).not.toMatch(/Turner|Walker/);
+  });
+
+  it('returns start data alongside a saved report', async () => {
+    const app = createApp(testDeps({ fetch: fakeFetch(routes()).fetch }));
+    await put(app, 'g2', form({ scoring: 'yes' }));
+    const body = await (await call(app, '/api/teams/pumas/games/g2')).json<GamePage>();
+    expect(body.report?.version).toBe(1);
+    expect(body.start.available).toBe(true);
+    expect(body.start.rule).toEqual({ kind: 'open' });
   });
 
   it('still opens the form when PlayHQ is down', async () => {
     const res = await call(createApp(testDeps({ fetch: fakeFetch(routes({ '/v2/games/g2/summary': fail })).fetch })), '/api/teams/pumas/games/g2');
-    expect((await res.json<GamePage>()).start).toEqual({ available: false, result: null, candidates: [] });
+    expect((await res.json<GamePage>()).start).toEqual({ available: false, result: null, candidates: [], figures: [], rule: { kind: 'open' } });
   });
 
   it('503s when the fixture is unavailable and nothing is cached', async () => {

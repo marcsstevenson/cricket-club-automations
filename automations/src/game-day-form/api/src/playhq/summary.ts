@@ -1,18 +1,34 @@
 import { otherLabel } from '../../../shared/src/labels';
-import type { MilestoneCandidate, PlayerRefOut, PlayhqStartData } from '../../../shared/src/types';
+import { ruleFor } from '../../../shared/src/milestone-rules';
+import type { MilestoneCandidate, PlayerFigures, PlayerRefOut, PlayhqStartData } from '../../../shared/src/types';
 import type { Team } from '../squad/load';
 import type { Stat, V2Summary } from './types';
 
-export const UNAVAILABLE: PlayhqStartData = { available: false, result: null, candidates: [] };
+/** Start data when PlayHQ can't be reached: no figures, and the rule falls back to the squad grade name. */
+export function unavailableStart(team: Team, gameDate: string | null): PlayhqStartData {
+  return {
+    available: false,
+    result: null,
+    candidates: [],
+    figures: [],
+    rule: ruleFor({ overLimit: null, gradeName: team.gradeName ?? null, gameDate }),
+  };
+}
 
 const stat = (stats: Stat[], type: string) => stats.find((s) => s.type === type)?.value ?? null;
+const keepMax = (map: Map<string, number>, id: string, value: number | null) => {
+  if (value !== null) map.set(id, Math.max(map.get(id) ?? 0, value));
+};
 
-export function startData(s: V2Summary, team: Team, labels: Map<string, string>): PlayhqStartData {
+export function startData(s: V2Summary, team: Team, labels: Map<string, string>, gameDate: string | null): PlayhqStartData {
   const teamId = team.playhqTeamId;
   const oppId = s.teams.find((t) => t.id !== teamId)?.id;
   const totals = new Map<string, { runs: number; wkts: number }>();
   const bat = new Map<string, number>();
   const bowl = new Map<string, number>();
+  const balls = new Map<string, number>();
+  const overs = new Map<string, number>();
+  let overLimit: number | null = null;
 
   for (const period of s.periods) {
     for (const t of period.teams) {
@@ -20,13 +36,18 @@ export function startData(s: V2Summary, team: Team, labels: Map<string, string>)
         const runs = stat(t.statistics, 'TOTAL_SCORE');
         const wkts = stat(t.statistics, 'TOTAL_OUTS');
         if (runs !== null && wkts !== null) totals.set(t.id, { runs, wkts });
+        const limit = stat(t.statistics, 'OVER_LIMIT');
+        if (limit !== null && limit > 0) overLimit = Math.max(overLimit ?? 0, limit);
       }
       if (t.id !== teamId) continue;
       for (const a of t.appearances) {
-        const value = stat(a.statistics, t.discipline === 'BATTING' ? 'TOTAL_RUNS' : 'WICKETS');
-        if (value === null) continue;
-        const map = t.discipline === 'BATTING' ? bat : bowl;
-        map.set(a.id, Math.max(map.get(a.id) ?? 0, value));
+        if (t.discipline === 'BATTING') {
+          keepMax(bat, a.id, stat(a.statistics, 'TOTAL_RUNS'));
+          keepMax(balls, a.id, stat(a.statistics, 'BALLS_FACED'));
+        } else {
+          keepMax(bowl, a.id, stat(a.statistics, 'WICKETS'));
+          keepMax(overs, a.id, stat(a.statistics, 'OVERS'));
+        }
       }
     }
   }
@@ -48,5 +69,11 @@ export function startData(s: V2Summary, team: Team, labels: Map<string, string>)
     ...[...bat].filter(([, r]) => r >= 25 && r <= 999).map(([id, r]) => ({ type: 'bat' as const, player: ref(id), value: r })),
     ...[...bowl].filter(([, w]) => w >= 3 && w <= 19).map(([id, w]) => ({ type: 'bowl' as const, player: ref(id), value: w })),
   ];
-  return { available: true, result, candidates };
+  const figures: PlayerFigures[] = [...new Set([...balls.keys(), ...overs.keys()])].map((id) => ({
+    player: ref(id),
+    ballsFaced: balls.get(id) ?? null,
+    overs: overs.get(id) ?? null,
+  }));
+  const rule = ruleFor({ overLimit, gradeName: s.grade?.name ?? team.gradeName ?? null, gameDate });
+  return { available: true, result, candidates, rule, figures };
 }

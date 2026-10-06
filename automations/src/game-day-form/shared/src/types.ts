@@ -86,8 +86,7 @@ export interface CheckContext {
   figures: PlayerFigures[];
 }
 
-export interface PlayhqStartData {
-  available: boolean;
+export interface PlayhqStartData extends CheckContext {
   result: { team: { runs: number; wkts: number }; opp: { runs: number; wkts: number } } | null;
   candidates: MilestoneCandidate[];
 }

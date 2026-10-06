@@ -33,7 +33,7 @@ export type ReportOut = FormState & { version: number; updatedAt: string };
 export interface GamePage {
   game: GameOption;
   report: ReportOut | null;
-  start: PlayhqStartData | null;
+  start: PlayhqStartData;
 }
 
 export interface RefreshResult {

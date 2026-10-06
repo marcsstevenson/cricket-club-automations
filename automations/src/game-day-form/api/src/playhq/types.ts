@@ -29,6 +29,7 @@ export interface V2PeriodTeam {
 export interface V2Summary {
   id: string;
   status: string;
+  grade?: { id: string; name: string } | null;
   teams: { id: string; name: string }[];
   appearances: V2Appearance[];
   periods: { name: string; sequenceNo: number; teams: V2PeriodTeam[] }[];

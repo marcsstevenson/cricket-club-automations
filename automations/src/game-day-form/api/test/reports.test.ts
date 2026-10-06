@@ -26,7 +26,7 @@ describe('PUT report', () => {
     await put(a, 'g1', form());
     const page = await (await call(a, '/api/teams/pumas/games/g1')).json<GamePage>();
     expect(page.report?.version).toBe(1);
-    expect(page.start).toBeNull();
+    expect(page.start.available).toBe(true);
   });
 
   it('uses PlayHQ scores when PlayHQ has the result, whatever the client sent', async () => {
