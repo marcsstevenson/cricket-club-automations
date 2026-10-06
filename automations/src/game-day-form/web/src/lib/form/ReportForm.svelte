@@ -2,8 +2,9 @@
   import { api } from '$lib/api';
   import type { TeamPage } from '$shared/api';
   import { merge } from '$shared/merge';
-  import { REASON_TEXT, SCORING_TEXT } from '$shared/text';
-  import type { FormState } from '$shared/types';
+  import { withChecks } from '$shared/milestone-rules';
+  import { milestoneRuleText, REASON_TEXT, SCORING_TEXT } from '$shared/text';
+  import type { FormState, MilestoneRow } from '$shared/types';
   import FieldError from './FieldError.svelte';
   import type { GameForm } from './game-form.svelte';
   import MilestoneList from './MilestoneList.svelte';
@@ -20,11 +21,24 @@
   let refreshing = $state(false);
   let refreshMsg = $state('');
 
+  const rule = $derived(form.start?.rule ?? { kind: 'open' as const });
+  const ruleText = $derived(milestoneRuleText(rule));
+
+  // Keep check flags in step with the rows (added rows, player changes, resumed drafts). Writes only on change.
+  $effect(() => {
+    const start = form.start;
+    if (!start) return;
+    const cur = $state.snapshot(form.state.milestones) as MilestoneRow[];
+    const next = withChecks(cur, start);
+    if (JSON.stringify(next) !== JSON.stringify(cur)) form.state.milestones = next;
+  });
+
   async function refresh() {
     refreshing = true;
     refreshMsg = 'Checking PlayHQ…';
     try {
       const r = await api().refresh(team.team.slug, gameId);
+      form.start = r.start;
       if (r.rateLimited) {
         refreshMsg = 'Just refreshed — try again in a minute.';
         return;
@@ -105,9 +119,21 @@
 
     <fieldset class="card" id="sec-milestones">
       <legend>Milestones</legend>
-      <MilestoneList {form} type="bat" squad={team.squad} title="Batting milestone" valueLabel="Runs (25 or more)" />
-      <MilestoneList {form} type="bowl" squad={team.squad} title="Bowling milestone" valueLabel="Wickets (3+)" maxDigits={2} />
-      <MilestoneList {form} type="hattrick" squad={team.squad} title="Hat-trick" />
+      {#if rule.kind === 'pairs'}
+        <details class="explainer">
+          <summary>How are these worked out?</summary>
+          <p>
+            In pairs cricket, milestones only count a player's fair share: their <strong>first {rule.batBalls} balls</strong>
+            batting and <strong>first {rule.bowlOvers} overs</strong> bowling. We fill these in from PlayHQ where we can.
+            PlayHQ shows totals, not ball-by-ball, so when a player batted or bowled more than their share we can't tell
+            whether the milestone came inside it. Those are marked ⚠ for you to check against the scorebook. Please don't
+            remove a milestone we've filled in unless the scorebook shows it's wrong.
+          </p>
+        </details>
+      {/if}
+      <MilestoneList {form} type="bat" squad={team.squad} title="Batting milestone" hint={ruleText.bat} valueLabel="Runs (25 or more)" />
+      <MilestoneList {form} type="bowl" squad={team.squad} title="Bowling milestone" hint={ruleText.bowl} valueLabel="Wickets (3+)" maxDigits={2} />
+      <MilestoneList {form} type="hattrick" squad={team.squad} title="Hat-trick" hint={ruleText.hattrick} />
       {@render refreshButton()}
     </fieldset>
   {/if}

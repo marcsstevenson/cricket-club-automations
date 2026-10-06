@@ -54,7 +54,10 @@
     {#if report.milestones.length}
       <ul>
         {#each report.milestones as m (m.rowId)}
-          <li>{MILESTONE_TEXT[m.type]}: {who(m.player)}{m.value !== null ? ` — ${m.value} ${m.type === 'bat' ? 'runs' : 'wickets'}` : ''}</li>
+          <li>
+            {MILESTONE_TEXT[m.type]}: {who(m.player)}{m.value !== null ? ` — ${m.value} ${m.type === 'bat' ? 'runs' : 'wickets'}` : ''}
+            {#if m.check}<span class="badge badge-check">{m.check.checked ? 'Checked ✓' : '⚠ Not checked'}</span>{/if}
+          </li>
         {/each}
       </ul>
     {:else}

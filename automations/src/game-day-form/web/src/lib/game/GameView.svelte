@@ -30,6 +30,7 @@
   onMount(async () => {
     try {
       const page = await api().game(team.team.slug, gameId);
+      form.start = page.start;
       if (page.report) {
         report = page.report;
         mode = 'readonly';
