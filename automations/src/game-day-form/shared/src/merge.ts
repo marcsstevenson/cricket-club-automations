@@ -8,6 +8,7 @@ import {
   type Score,
 } from './types';
 import { samePlayer } from './players';
+import { needsCheck, withChecks } from './milestone-rules';
 
 export { samePlayer };
 
@@ -15,7 +16,7 @@ const defaultRowId = () => crypto.randomUUID();
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
 function candidateRow(c: MilestoneCandidate, rowId: string): MilestoneRow {
-  return { rowId, type: c.type, player: clone(c.player), value: c.value, source: 'playhq', playhqValue: c.value, touched: false };
+  return { rowId, type: c.type, player: clone(c.player), value: c.value, source: 'playhq', playhqValue: c.value, touched: false, check: null };
 }
 
 export function startForm(start: PlayhqStartData, newRowId: () => string = defaultRowId): FormState {
@@ -26,7 +27,7 @@ export function startForm(start: PlayhqStartData, newRowId: () => string = defau
     f.opp = { ...start.result.opp };
     f.scoreSource = 'playhq';
   }
-  f.milestones = start.candidates.map((c) => candidateRow(c, newRowId()));
+  f.milestones = withChecks(start.candidates.map((c) => candidateRow(c, newRowId())), start);
   return f;
 }
 
@@ -77,7 +78,7 @@ export function merge(cur: FormState, fresh: PlayhqStartData, newRowId: () => st
     kept.push(candidateRow(c, newRowId()));
     counts[c.type].added++;
   }
-  next.milestones = kept;
+  next.milestones = withChecks(kept, fresh);
 
   for (const type of ['bat', 'bowl'] as const) {
     const noun = type === 'bat' ? 'batting' : 'bowling';
@@ -87,5 +88,8 @@ export function merge(cur: FormState, fresh: PlayhqStartData, newRowId: () => st
     }
   }
 
-  return { next, changes: changes.length ? changes : ['No changes from PlayHQ'] };
+  const result = changes.length ? changes : ['No changes from PlayHQ'];
+  const n = needsCheck(next.milestones);
+  if (n) result.push(`${n} milestone${n > 1 ? 's need' : ' needs'} checking`);
+  return { next, changes: result };
 }
