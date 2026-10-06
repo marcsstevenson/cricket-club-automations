@@ -33,12 +33,12 @@ const summary = (id, withStats) => ({
   periods: withStats
     ? [
         { name: 'FIRST_INNINGS', sequenceNo: 1, teams: [
-          { id: OPP, discipline: 'BATTING', statistics: st([['TOTAL_SCORE', 128], ['TOTAL_OUTS', 4]]), appearances: [] },
-          { id: PUMAS, discipline: 'BOWLING', statistics: [], appearances: [{ id: 'ph-jordan', statistics: st([['WICKETS', 3]]) }] },
+          { id: OPP, discipline: 'BATTING', statistics: st([['TOTAL_SCORE', 128], ['TOTAL_OUTS', 4], ['OVER_LIMIT', 16]]), appearances: [] },
+          { id: PUMAS, discipline: 'BOWLING', statistics: [], appearances: [{ id: 'ph-jordan', statistics: st([['WICKETS', 3], ['OVERS', 3]]) }] },
         ] },
         { name: 'FIRST_INNINGS', sequenceNo: 2, teams: [
-          { id: PUMAS, discipline: 'BATTING', statistics: st([['TOTAL_SCORE', 145], ['TOTAL_OUTS', 4]]),
-            appearances: [{ id: 'ph-alex', statistics: st([['TOTAL_RUNS', 31]]) }, { id: 'ph-fill', statistics: st([['TOTAL_RUNS', 27]]) }] },
+          { id: PUMAS, discipline: 'BATTING', statistics: st([['TOTAL_SCORE', 145], ['TOTAL_OUTS', 4], ['OVER_LIMIT', 16]]),
+            appearances: [{ id: 'ph-alex', statistics: st([['TOTAL_RUNS', 31], ['BALLS_FACED', 12]]) }, { id: 'ph-fill', statistics: st([['TOTAL_RUNS', 27]]) }] },
           { id: OPP, discipline: 'BOWLING', statistics: [], appearances: [] },
         ] },
       ]

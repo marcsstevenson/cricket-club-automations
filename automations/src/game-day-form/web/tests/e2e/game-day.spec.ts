@@ -22,6 +22,17 @@ test('a PlayHQ-scored game is prefilled', async ({ page }) => {
   await expect(page.getByRole('option', { name: 'Riccarton Rams', exact: false })).toHaveAttribute('disabled', '');
 });
 
+test('pairs games explain the limits and flag over-share milestones', async ({ page }) => {
+  await page.goto('/pumas?game=e2e-g2');
+  await expect(page.getByText('How are these worked out?')).toBeVisible();
+  await expect(page.getByText("25 or more runs from the batter's first 12 balls.")).toBeVisible();
+  await expect(page.getByText('⚠ Bowled 3 overs. Only wickets in the first 2 count. Check the scorebook.')).toBeVisible();
+  await expect(page.getByText(/Faced \d+ balls/)).toHaveCount(0); // Alex faced exactly 12
+  const tick = page.getByLabel('Checked: 3 wickets by the end of the 2nd over');
+  await tick.check();
+  await expect(tick).toBeChecked();
+});
+
 test('submit once, view read-only without full names, then edit', async ({ page }) => {
   await page.goto('/pumas?game=e2e-g1');
   await page.getByLabel('No', { exact: true }).check();
