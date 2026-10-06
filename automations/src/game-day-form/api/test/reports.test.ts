@@ -175,6 +175,31 @@ describe('milestone check flags', () => {
     expect(body.milestones[0].check).toEqual({ actual: 3, share: 2, checked: true });
   });
 
+  it("matches a saved named player on the stored PlayHQ id, not the client's", async () => {
+    const fill = pairsG2({
+      '/v2/games/g2/summary': {
+        data: summary({
+          id: 'g2',
+          team: { runs: 120, wkts: 0 },
+          opp: { runs: 89, wkts: 0 },
+          overLimit: 16,
+          bowling: [{ id: 'ph-fill', wkts: 3, overs: 3 }],
+          appearances: [{ id: 'ph-fill', firstName: 'Kim', lastName: 'Walker' }],
+        }),
+      },
+    });
+    const a = createApp(testDeps({ fetch: fill.fetch }));
+    const first = await (
+      await put(a, 'g2', form({ scoring: 'yes', milestones: [{ ...bowlRow('x'), player: { kind: 'other', fullName: 'Chris Pratt' } }] as never }))
+    ).json<ReportOut>();
+    const ref = first.milestones[0].player as { kind: 'named'; id: string };
+    const spoofed = { ...ref, playhqId: 'ph-fill' };
+    const second = await (
+      await put(a, 'g2', form({ baseVersion: 1, scoring: 'yes', milestones: [{ ...bowlRow('x'), player: spoofed }] as never }))
+    ).json<ReportOut>();
+    expect(second.milestones[0].check).toBeNull();
+  });
+
   it('round-trips the flag through D1', async () => {
     await save(pairsG2(), [bowlRow('p004')]);
     const row = await env.DB.prepare('SELECT check_actual, check_share, checked FROM milestones').first();

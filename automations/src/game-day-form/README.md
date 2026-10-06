@@ -48,6 +48,8 @@ Download *Team certs and mascots/Mascots* from SharePoint into `assets-src/masco
 npm run deploy      # build SPA, apply D1 migrations, wrangler deploy
 ```
 
+Reports saved before migration 0002 (milestone check flags) carry no flags until they are edited and re-submitted (Edit, Next, Submit recomputes them).
+
 ## First deploy
 
 One-time setup. `wrangler.jsonc` ships with placeholder ids; replace them before deploying.
@@ -72,8 +74,8 @@ Upload a new squad JSON with the new `playhqSeasonId` (and grade IDs once PlayHQ
 A separate Worker, `pcc-game-day-demo`, runs 2025/26 with "now" frozen at Saturday 21 March 2026, 9 pm NZ (`FAKE_NOW` in `wrangler.jsonc` → `env.demo`). It has its own D1, KV and R2, so nothing touches production.
 
 ```bash
-npm run build:web && npx wrangler deploy --env demo
 npx wrangler d1 migrations apply pcc-game-day-demo --env demo --remote
+npm run build:web && npx wrangler deploy --env demo
 npx wrangler kv key put squad --path=squad.demo.json --binding=CONFIG --env demo --remote
 ```
 

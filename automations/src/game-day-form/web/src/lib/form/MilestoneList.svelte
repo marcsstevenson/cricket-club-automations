@@ -29,7 +29,7 @@
   {#if row.type === type}
     <div class="milestone">
       {#if row.source === 'playhq'}<span class="badge badge-phq">From PlayHQ</span>{/if}
-      <PlayerPicker bind:value={row.player} {squad} id={`m-${row.rowId}`} label="Player" error={form.errors[`milestones.${i}.player`]} onedit={() => (row.touched = true)} />
+      <PlayerPicker bind:value={row.player} {squad} id={`m-${row.rowId}`} label="Player" error={form.errors[`milestones.${i}.player`]} onedit={() => { row.touched = true; row.check = null; }} />
       {#if type !== 'hattrick'}
         <NumberInput bind:value={row.value} id={`m-${row.rowId}-value`} label={valueLabel} {maxDigits} error={form.errors[`milestones.${i}.value`]} onedit={() => (row.touched = true)} />
       {/if}

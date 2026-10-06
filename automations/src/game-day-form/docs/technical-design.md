@@ -364,7 +364,7 @@ so the coach can redo their edits on top of it.
 Implements functional spec §6.3. Pure functions shared by browser and Worker.
 
 ```ts
-type MilestoneRule = { kind: 'pairs'; batBalls: 12 | 15; bowlOvers: 2 } | { kind: 'open' };
+type MilestoneRule = { kind: 'pairs'; batBalls: number; bowlOvers: 2 } | { kind: 'open' };
 
 ruleFor({ overLimit, gradeName, gameDate }): MilestoneRule
 //  overLimit > 0:  ≤ 18 → pairs 12;  ≥ 27 → open;  otherwise pairs 15, except
@@ -377,11 +377,12 @@ interface PlayerFigures { player: PlayerRefOut; ballsFaced: number | null; overs
 interface MilestoneCheck { actual: number; share: number; checked: boolean }
 
 expectedCheck(rule, figures, row): { actual; share } | null
-//  pairs rule, bat/bowl row with a player, figures found for that player (samePlayer from merge.ts), and
+//  pairs rule, bat/bowl row with a player, figures found for that player (samePlayer in players.ts), and
 //  bat: ballsFaced > batBalls → {actual: ballsFaced, share: batBalls}; bowl: overs > bowlOvers → {actual: overs, share: 2}
 
-withChecks(milestones, rule, figures): MilestoneRow[]
+withChecks(rows, ctx: CheckContext): MilestoneRow[]   // ctx = PlayHQ start data: { available, rule, figures, … }
 //  sets row.check = expected ? { ...expected, checked: prev?.checked === true && prev.actual === expected.actual } : null
+//  Rows are returned untouched when ctx.available is false.
 //  Idempotent. Value edits don't matter; a changed figure (actual) resets the tick.
 ```
 
@@ -397,7 +398,9 @@ withChecks(milestones, rule, figures): MilestoneRow[]
   `startForm` and `merge` apply it too; `merge` appends *"N milestone(s) need checking"* when unchecked flags remain.
 - **Worker on save:** if the summary is available, recompute with `withChecks` (authoritative, keeps the client's
   tick only when `actual` matches). If PlayHQ is unreachable, store the client's `check` as sent (already
-  validated by the schema).
+  validated by the schema). `named` players are matched on the stored `named_players.playhq_id`, not the client's.
+- **Existing reports:** reports saved before migration 0002 have no check flags (`check_actual` is NULL) until they
+  are edited and re-submitted (Edit, Next, Submit recomputes them). There is no backfill.
 - **Display:** flagged rows in the form show the warning and a "Checked" checkbox bound to `check.checked`; the
   review and read-only views show *"⚠ Not checked"* / *"Checked ✓"*. The explainer (`<details>`) and the
   per-question rule lines come from `shared/text.ts`, keyed by rule kind and share.

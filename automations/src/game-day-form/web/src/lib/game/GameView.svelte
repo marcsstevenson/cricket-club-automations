@@ -9,6 +9,7 @@
   import ReportSummary from '$lib/report/ReportSummary.svelte';
   import type { ReportOut, TeamPage } from '$shared/api';
   import { reportToForm, startForm } from '$shared/merge';
+  import { withChecks } from '$shared/milestone-rules';
   import type { FormState } from '$shared/types';
   import { validateReport } from '$shared/validation';
 
@@ -71,7 +72,8 @@
   }
 
   function edit(from: ReportOut) {
-    form.reset(reportToForm(from), from.version);
+    const f = reportToForm(from);
+    form.reset(form.start ? { ...f, milestones: withChecks(f.milestones, form.start) } : f, from.version);
     offerDraft();
     message = '';
     mode = 'form';

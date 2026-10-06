@@ -46,7 +46,17 @@ export function registerReports(app: Hono<AppEnv>) {
     const potd = played ? r.resolve('potd', body.potd) : { key: null, namedId: null };
     const mascot = played ? r.resolve('mascot', body.mascot) : { key: null, namedId: null };
     // Recompute flags from PlayHQ when we have it; otherwise keep what the client sent (spec §6.3.3).
-    const rows = start ? withChecks(body.milestones, start) : body.milestones;
+    // Named players match on the stored PlayHQ id, never the one the client sent.
+    const rows = start
+      ? withChecks(
+          body.milestones.map((m) =>
+            m.player?.kind === 'named'
+              ? { ...m, player: { ...m.player, playhqId: existing?.named.get(m.player.id)?.playhqId ?? undefined } }
+              : m,
+          ),
+          start,
+        )
+      : body.milestones;
     const milestones: StoredMilestone[] = played
       ? rows.map((m, i) => {
           const p = r.resolve(`milestones.${i}.player`, m.player);
