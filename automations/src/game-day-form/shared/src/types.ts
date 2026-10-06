@@ -17,6 +17,8 @@ export const PlayerRefInSchema = v.variant('kind', [
 
 const ScoreSchema = v.object({ runs: NumOrNull, wkts: NumOrNull });
 
+export const MilestoneCheckSchema = v.object({ actual: v.number(), share: v.number(), checked: v.boolean() });
+
 export const MilestoneRowSchema = v.object({
   rowId: Str(64),
   type: v.picklist(['bat', 'bowl', 'hattrick']),
@@ -25,6 +27,7 @@ export const MilestoneRowSchema = v.object({
   source: v.picklist(['playhq', 'entered']),
   playhqValue: NumOrNull,
   touched: v.boolean(),
+  check: v.optional(v.nullable(MilestoneCheckSchema)),
 });
 
 export const FormStateSchema = v.object({
@@ -64,6 +67,23 @@ export interface MilestoneCandidate {
   type: 'bat' | 'bowl';
   player: PlayerRefOut;
   value: number;
+}
+
+export type MilestoneCheck = v.InferOutput<typeof MilestoneCheckSchema>;
+
+/** Functional spec §6.3.1: pairs grades limit milestones to a fair share; open grades have no limits. */
+export type MilestoneRule = { kind: 'pairs'; batBalls: number; bowlOvers: number } | { kind: 'open' };
+
+export interface PlayerFigures {
+  player: PlayerRefOut;
+  ballsFaced: number | null;
+  overs: number | null;
+}
+
+export interface CheckContext {
+  available: boolean;
+  rule: MilestoneRule;
+  figures: PlayerFigures[];
 }
 
 export interface PlayhqStartData {

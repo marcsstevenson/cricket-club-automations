@@ -4,22 +4,15 @@ import {
   type FormState,
   type MilestoneCandidate,
   type MilestoneRow,
-  type PlayerChoice,
-  type PlayerRefOut,
   type PlayhqStartData,
   type Score,
 } from './types';
+import { samePlayer } from './players';
+
+export { samePlayer };
 
 const defaultRowId = () => crypto.randomUUID();
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
-
-export function samePlayer(a: PlayerChoice | null, b: PlayerRefOut): boolean {
-  if (!a) return false;
-  if (a.kind === 'squad' && b.kind === 'squad') return a.key === b.key;
-  const aPhq = a.kind === 'playhq' || a.kind === 'named' ? a.playhqId : undefined;
-  const bPhq = b.kind === 'playhq' || b.kind === 'named' ? b.playhqId : undefined;
-  return !!aPhq && aPhq === bPhq;
-}
 
 function candidateRow(c: MilestoneCandidate, rowId: string): MilestoneRow {
   return { rowId, type: c.type, player: clone(c.player), value: c.value, source: 'playhq', playhqValue: c.value, touched: false };
