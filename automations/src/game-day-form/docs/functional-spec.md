@@ -1,6 +1,7 @@
 # Game Day Form — Functional Spec
 
-**Status:** Approved 2026-10-05, amended during technical design (see [`technical-design.md`](./technical-design.md) §13)
+**Status:** Approved 2026-10-05, amended during technical design (see [`technical-design.md`](./technical-design.md) §13);
+pairs-cricket milestone limits added 2026-10-07 (§6.3)
 · **Club:** Parklands Cricket Club (PCC)
 
 Replaces the current Microsoft Form ("Game day form"). Covers what the form does, not how it is built.
@@ -71,10 +72,13 @@ Read for the team's grade in the current season:
 | Opposition team names | Game dropdown labels, opposition score label |
 | Final team scores (runs, wickets) | Read-only scores |
 | Per-player batting runs and bowling wickets | Prefilled milestones |
+| Per-player balls faced and overs bowled | Pairs-cricket limit checks (§6.3) |
+| The game's over limit per innings and grade name | Which milestone rules apply (§6.3) |
 
 **"PlayHQ has the result"** means the game's PlayHQ status is final and both teams have a total score.
 
-PlayHQ does **not** provide hat-tricks (no ball-by-ball data), so hat-tricks are always entered manually.
+PlayHQ provides **totals only, no ball-by-ball data**. So hat-tricks are always entered manually, and PlayHQ
+cannot say *when* in a player's innings or spell a run or wicket came (§6.3).
 
 All dates and "today" are in New Zealand time (Pacific/Auckland).
 
@@ -171,6 +175,9 @@ Same add/remove and one-row-per-player rules as Q6.
 
 Repeatable rows: **Player** (squad picker) only. Same add/remove and one-row-per-player rules as Q6.
 
+Q6–Q8 each show a one-line rule under the heading that depends on the game's grade, and in pairs grades the
+milestones section has an explainer and may show check flags. See §6.3.
+
 ### Q9. Your name *(optional)*
 
 Free text. Recorded against this save so changes can be traced (§7.3).
@@ -197,7 +204,12 @@ players only:
 - Q6 — every batter with 25 or more runs.
 - Q7 — every bowler with 3 or more wickets (and fewer than 20).
 
-Each prefilled row is labelled *"From PlayHQ"* and is fully editable and removable.
+Each prefilled row is labelled *"From PlayHQ"* and is fully editable and removable. In pairs grades, rows
+for players who went over their share are still prefilled, with a check flag (§6.3).
+
+*Example:* Rhinos v OBC 34, 21 Mar 2026 (Year 4, pairs, 12 balls / 2 overs). Frederick R. took 3 wickets in 3
+overs, so he is prefilled with a bowling flag. Kaiser M. scored 26 off 16 balls, so he is prefilled with a
+batting flag.
 
 **Matching** a PlayHQ player to the squad uses `playhqId` only:
 
@@ -227,6 +239,107 @@ If PlayHQ can't be reached: *"Couldn't reach PlayHQ — try again later."* Nothi
 Refresh is limited to once a minute per game. Pressing it again sooner shows *"Just refreshed — try again in a
 minute."*
 
+Refresh also re-evaluates check flags (§6.3.3) and includes them in the summary, e.g.
+*"1 milestone needs checking"*.
+
+### 6.3 Milestone limits in pairs cricket
+
+In pairs grades a player's milestones count only within their **fair share**: their first **N balls** batting
+and their **first 2 overs** bowling. Non-pairs grades have no limits.
+
+Because PlayHQ gives totals only (§3.2), the form cannot tell whether a milestone was reached inside the share
+when a player batted or bowled more than it. The club prefers wrongly awarding a milestone to wrongly missing
+one, so such milestones are **still prefilled and awarded**, but carry a **check flag** for the scorer.
+
+#### 6.3.1 Which rules apply
+
+The rule is chosen mainly from **this game's overs per innings**: the over limit PlayHQ shows for the game. A
+zero value counts as not known. Scorers enter this figure, so an odd game can get the wrong rule (e.g. a Year 6
+game shortened to 16 overs after Christmas gets pairs flags). Milestones are awarded regardless, so the cost is a
+stray flag.
+
+| This game's overs | Rule | Batting share | Bowling share |
+|---|---|---|---|
+| 18 or fewer (Kiwi 12; Year 3/4, Mini Mags, Fab 4 16) | Pairs | 12 balls | 2 overs |
+| Over 18 and under 27 (normally 20) | Pairs, **except** as below | 15 balls | 2 overs |
+| 27 or more (Year 7/8, Premier) | No limits | — | — |
+
+**20-over exceptions**, checked against the **PlayHQ grade name** (case-insensitive):
+
+- Contains "Hardball" **and** "Div 3" or "Division 3" (girls Intermediate Hardball): **no limits**, all season.
+- Game dated **1 January or later** in the season, and the name contains "Year 6" (but not "Super 8"), or "Div 3"
+  or "Division 3" (girls Intermediate Incrediball): **no limits**.
+
+So Year 5 Hardball, Year 5/6 Super 8 and girls Division 4 are pairs all season, and Year 6 and girls Division 3
+Incrediball are pairs until 31 December.
+
+**Fallback when the game has no overs figure** (not scored on PlayHQ, or PlayHQ can't be reached). Use the PlayHQ
+grade name, or the team's `gradeName` from the squad JSON if PlayHQ can't be reached:
+
+- Contains "Kiwi", "Year 3", "Year 4" or "Mini Mags": pairs, 12 balls / 2 overs.
+- Anything else: no limits.
+
+These games have no PlayHQ player figures, so no check flags are possible. Only the explainer wording depends on
+the fallback.
+
+- The bowling share is 2 overs in every pairs grade, including when a short-handed team lets players bowl 3.
+- Anything unrecognised gets no limits. Under the over-award preference, the worst case is a missing check flag.
+
+#### 6.3.2 Explainers
+
+**Pairs grades** (shown with that grade's batting share, here 12 balls):
+
+> **How are these worked out?** *(collapsed by default)*
+> In pairs cricket, milestones only count a player's fair share: their **first 12 balls** batting and **first 2
+> overs** bowling. We fill these in from PlayHQ where we can. PlayHQ shows totals, not ball-by-ball, so when a
+> player batted or bowled more than their share we can't tell whether the milestone came inside it. Those are
+> marked ⚠ for you to check against the scorebook. Please don't remove a milestone we've filled in unless the
+> scorebook shows it's wrong.
+
+| Question | One-line rule under the heading |
+|---|---|
+| Q6 Batting | 25 or more runs from the batter's first 12 balls. |
+| Q7 Bowling | 3 or more wickets in the bowler's first 2 overs. |
+| Q8 Hat-trick | 3 wickets from 3 balls in a row by the same bowler. They can span two of the bowler's overs, but all three must come in their first 2 overs. |
+
+**Grades with no limits:** no "How are these worked out?" section and no check flags.
+
+| Question | One-line rule under the heading |
+|---|---|
+| Q6 Batting | 25 or more runs in the innings. |
+| Q7 Bowling | 3 or more wickets in the innings. |
+| Q8 Hat-trick | 3 wickets from 3 balls in a row by the same bowler. They can span two of the bowler's overs. |
+
+Hat-tricks are never flagged. Scorers judge them from the scorebook.
+
+#### 6.3.3 Check flags
+
+A batting or bowling milestone row carries a check flag when **all** of these are true:
+
+- the game's rule is pairs (§6.3.1);
+- PlayHQ has figures for that player in this game;
+- the player went over their share: **balls faced > batting share** (batting), or **overs bowled > 2**
+  (bowling, including part overs, e.g. 2.3).
+
+The flag depends on PlayHQ's figures for the player, **not on how the row got there**. A row the scorer added by
+hand, or re-added after removing it, is flagged the same way. If PlayHQ has no figures for the player (e.g. a game
+not scored electronically), there is no flag and the one-line rule is the only guidance.
+
+A flagged row shows:
+
+> ⚠ Bowled 3 overs. Only wickets in the first 2 count. Check the scorebook.
+> ☐ Checked: 3 wickets by the end of the 2nd over
+
+> ⚠ Faced 16 balls. Only runs from the first 12 count. Check the scorebook.
+> ☐ Checked: 25 runs by the 12th ball
+
+- **Ticking "Checked"** confirms the milestone was reached inside the share and clears the flag. If the scorebook
+  shows it wasn't, the scorer removes the row.
+- The flag never blocks submitting. An unticked flag is saved with the report.
+- **Editing the value** (e.g. 3 → 4 wickets) keeps the flag and the tick.
+- **Refresh from PlayHQ** resets the tick only if that player's balls faced or overs bowled changed. It adds a flag
+  if the player is now over their share, and removes it if they no longer are.
+
 ---
 
 ## 7. Review, submit and edit
@@ -237,6 +350,7 @@ minute."*
 - The review screen shows every answer read-only, grouped as on the form, with photo thumbnails.
   Questions hidden by "Game not played" are not shown.
 - Each group has an **Edit** link back to that part of the form.
+- Flagged milestones (§6.3.3) show *"⚠ Not checked"* or *"Checked ✓"* beside them.
 - **Submit** saves the report. A confirmation then shows the summary and a link back to the team page.
 
 ### 7.2 Viewing an existing report
@@ -287,7 +401,7 @@ One row per game across all teams in the JSON, sorted by date (newest first). By
 | Scores | *Team runs/wickets* v *Opposition runs/wickets* |
 | Player of the day | *First L.* |
 | Mascot of the day | *First L.* |
-| Milestones | Count of batting + bowling + hat-trick rows |
+| Milestones | Count of batting + bowling + hat-trick rows, plus unchecked flags, e.g. *3 (1 to check)* |
 
 - **Missing** = game date is before today and there is no report. Missing rows are highlighted.
 - Each row links to that game's report on the team page (or the blank form if there is no report).
@@ -296,7 +410,8 @@ One row per game across all teams in the JSON, sorted by date (newest first). By
 
 - Team (one or all)
 - Status (any combination)
-- **Needs follow-up** — Q1 answer is *No* or *Yes but there were issues*
+- **Needs follow-up** — Q1 answer is *No* or *Yes but there were issues*, or the report has an unchecked
+  milestone flag (§6.3.3)
 
 ### 8.3 Exports (CSV)
 
@@ -311,7 +426,8 @@ highlights text, photo links, last updated, last updated by.
 
 **`milestones.csv`** — one row per milestone:
 date, team, opposition, player (*First L.*), player ID, player is Other (Y/N),
-type (Batting / Bowling / Hat-trick), runs or wickets (blank for hat-tricks), source (PlayHQ / entered).
+type (Batting / Bowling / Hat-trick), runs or wickets (blank for hat-tricks), source (PlayHQ / entered),
+check (blank / *Needs check* / *Checked*, §6.3.3).
 
 "Player ID" is the squad `key`, or an anonymous ID for Other / not-in-squad players. Upcoming and Missing games
 appear in `games.csv` with empty report fields.
