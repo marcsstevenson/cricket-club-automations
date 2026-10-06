@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { GamePage, ReportOut } from '../../shared/src/api';
 import { createApp } from '../src/app';
 import { form, pumasRoutes, put } from './builders';
+import { fail, summary } from './fixtures/playhq';
 import { call, seedSquad, testDeps } from './helpers';
 
 const app = () => createApp(testDeps({ fetch: pumasRoutes().fetch }));
@@ -124,5 +125,59 @@ describe('PUT report', () => {
   it('429s when over the save limit', async () => {
     const a = createApp(testDeps({ fetch: pumasRoutes().fetch, limit: async () => false }));
     expect((await put(a, 'g1', form())).status).toBe(429);
+  });
+});
+
+describe('milestone check flags', () => {
+  beforeEach(() => seedSquad());
+
+  const pairsG2 = (over: Record<string, unknown> = {}) =>
+    pumasRoutes({
+      '/v2/games/g2/summary': {
+        data: summary({
+          id: 'g2',
+          team: { runs: 120, wkts: 0 },
+          opp: { runs: 89, wkts: 0 },
+          overLimit: 16,
+          bowling: [{ id: 'ph-jordan', wkts: 3, overs: 3 }, { id: 'ph-sam', wkts: 3, overs: 2 }],
+        }),
+      },
+      ...over,
+    });
+  const bowlRow = (key: string, check?: unknown) => ({
+    rowId: key, type: 'bowl', player: { kind: 'squad', key }, value: 3, source: 'playhq', playhqValue: 3, touched: false, ...(check === undefined ? {} : { check }),
+  });
+  const save = async (routes: ReturnType<typeof pumasRoutes>, milestones: unknown[]) =>
+    (await put(createApp(testDeps({ fetch: routes.fetch })), 'g2', form({ scoring: 'yes', milestones: milestones as never }))).json<ReportOut>();
+
+  it('flags an over-share bowler from PlayHQ even when the client sent no flag', async () => {
+    const body = await save(pairsG2(), [bowlRow('p004'), bowlRow('p002')]);
+    expect(body.milestones.map((m) => m.check)).toEqual([{ actual: 3, share: 2, checked: false }, null]);
+  });
+
+  it('keeps the tick when it matches the PlayHQ figure', async () => {
+    const ok = await save(pairsG2(), [bowlRow('p004', { actual: 3, share: 2, checked: true })]);
+    expect(ok.milestones[0].check).toEqual({ actual: 3, share: 2, checked: true });
+  });
+
+  it('drops a tick made against a different figure', async () => {
+    const stale = await save(pairsG2(), [bowlRow('p004', { actual: 2.4, share: 2, checked: true })]);
+    expect(stale.milestones[0].check).toEqual({ actual: 3, share: 2, checked: false });
+  });
+
+  it("clears a flag PlayHQ doesn't support", async () => {
+    const body = await save(pairsG2(), [bowlRow('p002', { actual: 9, share: 2, checked: false })]);
+    expect(body.milestones[0].check).toBeNull();
+  });
+
+  it("stores the client's flag as sent when PlayHQ can't be reached", async () => {
+    const body = await save(pairsG2({ '/v2/games/g2/summary': fail }), [bowlRow('p004', { actual: 3, share: 2, checked: true })]);
+    expect(body.milestones[0].check).toEqual({ actual: 3, share: 2, checked: true });
+  });
+
+  it('round-trips the flag through D1', async () => {
+    await save(pairsG2(), [bowlRow('p004')]);
+    const row = await env.DB.prepare('SELECT check_actual, check_share, checked FROM milestones').first();
+    expect(row).toEqual({ check_actual: 3, check_share: 2, checked: 0 });
   });
 });

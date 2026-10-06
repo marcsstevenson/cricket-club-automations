@@ -17,8 +17,8 @@ function input(over: Partial<SaveInput> = {}): SaveInput {
     },
     newNamed: [{ id: 'n1', fullName: 'Chris Pratt', playhqId: null }, { id: 'n2', fullName: 'Kim Walker', playhqId: 'ph-fill' }],
     milestones: [
-      { id: 'm1', type: 'bat', playerKey: 'p001', namedId: null, value: 31, source: 'playhq', playhqValue: 31, touched: false },
-      { id: 'm2', type: 'bat', playerKey: null, namedId: 'n2', value: 27, source: 'playhq', playhqValue: 27, touched: true },
+      { id: 'm1', type: 'bat', playerKey: 'p001', namedId: null, value: 31, source: 'playhq', playhqValue: 31, touched: false, check: null },
+      { id: 'm2', type: 'bat', playerKey: null, namedId: 'n2', value: 27, source: 'playhq', playhqValue: 27, touched: true, check: null },
     ],
     photoIds: [],
     snapshot: '{}',

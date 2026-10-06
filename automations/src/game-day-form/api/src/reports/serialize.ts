@@ -38,6 +38,7 @@ export function toReportOut(r: StoredReport, labels: Map<string, string>): Repor
       source: m.source,
       playhqValue: m.playhqValue,
       touched: m.touched,
+      check: m.check,
     })),
     updatedBy: r.updatedBy ?? '',
     version: r.version,

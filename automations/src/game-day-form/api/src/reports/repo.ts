@@ -1,4 +1,4 @@
-import type { MilestoneType, NotPlayedReason, Scoring, Source } from '../../../shared/src/types';
+import type { MilestoneCheck, MilestoneType, NotPlayedReason, Scoring, Source } from '../../../shared/src/types';
 
 export async function reportStatuses(db: D1Database, seasonId: string, teamSlug: string) {
   const { results } = await db
@@ -23,6 +23,7 @@ export interface StoredMilestone {
   source: Source;
   playhqValue: number | null;
   touched: boolean;
+  check: MilestoneCheck | null;
 }
 
 export interface ReportRow {
@@ -126,6 +127,9 @@ export async function loadReports(db: D1Database, seasonId: string, filter?: { t
         source: m.source as Source,
         playhqValue: m.playhq_value as number | null,
         touched: m.touched === 1,
+        check: m.check_actual === null || m.check_actual === undefined
+          ? null
+          : { actual: m.check_actual as number, share: m.check_share as number, checked: m.checked === 1 },
       })),
       photoIds: photos.results.filter((p) => p.report_id === id).map((p) => p.id as string),
       named: own,
@@ -171,9 +175,13 @@ export async function saveReport(db: D1Database, s: SaveInput): Promise<void> {
   s.milestones.forEach((m, i) =>
     stmts.push(
       db.prepare(
-        `INSERT INTO milestones (id, report_id, type, player_key, named_id, value, source, playhq_value, touched, position)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(m.id, s.reportId, m.type, m.playerKey, m.namedId, m.value, m.source, m.playhqValue, m.touched ? 1 : 0, i),
+        `INSERT INTO milestones (id, report_id, type, player_key, named_id, value, source, playhq_value, touched, position,
+           check_actual, check_share, checked)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        m.id, s.reportId, m.type, m.playerKey, m.namedId, m.value, m.source, m.playhqValue, m.touched ? 1 : 0, i,
+        m.check?.actual ?? null, m.check?.share ?? null, m.check?.checked ? 1 : 0,
+      ),
     ),
   );
 

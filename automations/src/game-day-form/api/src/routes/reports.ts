@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import * as v from 'valibot';
 import { ReportInSchema } from '../../../shared/src/types';
+import { withChecks } from '../../../shared/src/milestone-rules';
 import { validateReport } from '../../../shared/src/validation';
 import type { AppEnv } from '../env';
 import { ApiError, clientIp } from '../errors';
@@ -39,12 +40,15 @@ export function registerReports(app: Hono<AppEnv>) {
 
     const played = body.scoring !== 'not_played';
     const summary = played ? await ctx.summary() : null;
+    const start = summary ? startData(summary, ctx.team, ctx.labels, ctx.game.date) : null;
     const r = makeResolver({ team: ctx.team, existing, summary, newId: deps.id });
 
     const potd = played ? r.resolve('potd', body.potd) : { key: null, namedId: null };
     const mascot = played ? r.resolve('mascot', body.mascot) : { key: null, namedId: null };
+    // Recompute flags from PlayHQ when we have it; otherwise keep what the client sent (spec §6.3.3).
+    const rows = start ? withChecks(body.milestones, start) : body.milestones;
     const milestones: StoredMilestone[] = played
-      ? body.milestones.map((m, i) => {
+      ? rows.map((m, i) => {
           const p = r.resolve(`milestones.${i}.player`, m.player);
           return {
             id: deps.id(),
@@ -55,6 +59,7 @@ export function registerReports(app: Hono<AppEnv>) {
             source: m.source,
             playhqValue: m.playhqValue,
             touched: m.touched,
+            check: m.type === 'hattrick' ? null : (m.check ?? null),
           };
         })
       : [];
@@ -71,7 +76,7 @@ export function registerReports(app: Hono<AppEnv>) {
       throw new ApiError(422, 'validation_failed', 'Please fix the highlighted answers.', { fields: r.fields });
     }
 
-    const result = summary ? startData(summary, ctx.team, ctx.labels, ctx.game.date).result : null;
+    const result = start?.result ?? null;
     const scores = !played
       ? { teamRuns: null, teamWkts: null, oppRuns: null, oppWkts: null, scoreSource: null }
       : result
