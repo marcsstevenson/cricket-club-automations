@@ -223,6 +223,13 @@ CREATE INDEX milestones_report ON milestones (report_id);
 CREATE INDEX photos_orphans ON photos (report_id, created_at);
 ```
 
+```sql
+-- migrations/0002_milestone_checks.sql (pairs-cricket check flags, §8.5)
+ALTER TABLE milestones ADD COLUMN check_actual REAL;     -- balls faced / overs bowled when flagged; NULL = no flag
+ALTER TABLE milestones ADD COLUMN check_share  INTEGER;  -- the share it exceeded (12/15 balls, 2 overs)
+ALTER TABLE milestones ADD COLUMN checked      INTEGER NOT NULL DEFAULT 0;
+```
+
 A player reference in a row is **exactly one of** a squad `*_key` or a `*_named_id`. Uniqueness of "one milestone
 per player per type" is enforced in validation (squad key or named player identity) rather than by index, because a
 player can be referenced either way.
@@ -268,7 +275,7 @@ On save:
 | Purpose | Endpoint | Gives |
 |---|---|---|
 | Fixture for a grade | `GET /v1/grades/{gradeId}/games` | Game IDs, round, `schedule.dateTime`, status, `competitors[] {id, name, isHomeTeam}`, `venue {name}` |
-| One game's result + stats | `GET /v2/games/{gameId}/summary` | Team totals (`TOTAL_SCORE`, `TOTAL_OUTS`) per innings, per-player `TOTAL_RUNS` / `WICKETS`, `appearances[]`, status |
+| One game's result + stats | `GET /v2/games/{gameId}/summary` | Team totals (`TOTAL_SCORE`, `TOTAL_OUTS`, `OVER_LIMIT`) per innings, per-player `TOTAL_RUNS` / `BALLS_FACED` / `WICKETS` / `OVERS`, `appearances[]`, `grade {id, name}`, status |
 
 v1 scores are **ignored** (wrong for cricket — see API notes §3). Scores and stats only come from the v2 summary.
 Headers: `x-api-key: PLAYHQ_API_KEY`, `x-phq-tenant: PLAYHQ_TENANT`. Pagination on the v1 call follows
@@ -307,6 +314,10 @@ time a game's form is opened, plus manual refreshes.
 - **Milestone candidates:** for the PCC team's `BATTING` appearances with `TOTAL_RUNS ≥ 25` → `bat`; `BOWLING`
   appearances with `3 ≤ WICKETS ≤ 19` → `bowl`. Match `appearance.id` to `players[].playhqId`; unmatched → a
   `playhq` ref with a label built from the top-level `appearances[]` name.
+- **Player figures** (for check flags, §8.5): for every PCC appearance with stats, `BALLS_FACED` from `BATTING`
+  and `OVERS` from `BOWLING` (max across periods, like runs and wickets). Same player ref as the candidates.
+- **Over limit:** the largest non-zero `OVER_LIMIT` on any `BATTING` period team; `null` if none.
+- **Grade name:** `summary.grade.name`, else the squad team's `gradeName`.
 
 ## 8. Browser behaviour
 
@@ -348,6 +359,51 @@ time a game's form is opened, plus manual refreshes.
 report. The UI shows that version read-only plus a **"Your unsaved changes"** panel rendered from the local store,
 so the coach can redo their edits on top of it.
 
+### 8.5 Pairs-cricket milestone limits (`shared/milestone-rules.ts`)
+
+Implements functional spec §6.3. Pure functions shared by browser and Worker.
+
+```ts
+type MilestoneRule = { kind: 'pairs'; batBalls: 12 | 15; bowlOvers: 2 } | { kind: 'open' };
+
+ruleFor({ overLimit, gradeName, gameDate }): MilestoneRule
+//  overLimit > 0:  ≤ 18 → pairs 12;  ≥ 27 → open;  otherwise pairs 15, except
+//                  name has "hardball" + div 3 → open; or post-Christmas and (name has "year 6" but not
+//                  "super 8", or div 3) → open.
+//  else (no figure): name has kiwi / year 3 / year 4 / mini mags → pairs 12; otherwise open.
+//  div 3 = /\bdiv(ision)?\s*3\b/i.  Post-Christmas = gameDate month is Jan–Aug (seasons run Sep–Mar).
+
+interface PlayerFigures { player: PlayerRefOut; ballsFaced: number | null; overs: number | null }
+interface MilestoneCheck { actual: number; share: number; checked: boolean }
+
+expectedCheck(rule, figures, row): { actual; share } | null
+//  pairs rule, bat/bowl row with a player, figures found for that player (samePlayer from merge.ts), and
+//  bat: ballsFaced > batBalls → {actual: ballsFaced, share: batBalls}; bowl: overs > bowlOvers → {actual: overs, share: 2}
+
+withChecks(milestones, rule, figures): MilestoneRow[]
+//  sets row.check = expected ? { ...expected, checked: prev?.checked === true && prev.actual === expected.actual } : null
+//  Idempotent. Value edits don't matter; a changed figure (actual) resets the tick.
+```
+
+- **Row shape:** `MilestoneRow` gains `check: MilestoneCheck | null` (optional in the schema so old drafts parse).
+  Hat-tricks always have `check = null`.
+- **`PlayhqStartData` gains `rule` and `figures`.** `startData()` takes the game date and computes both;
+  the unavailable case (`unavailableStart(team, gameDate)`) has `figures: []` and the name-fallback rule from the
+  squad `gradeName`.
+- **`GET …/games/:gameId` now always returns `start`**, also when a report exists, so editing has the rule and
+  figures. It is the cached summary, so this costs a KV read, not a PlayHQ call, in the normal case.
+- **Browser:** `GameForm` keeps `start`. An `$effect` in `ReportForm` reapplies `withChecks` whenever milestones
+  change and writes back only if the result differs, so added rows, player changes and resumed drafts are covered.
+  `startForm` and `merge` apply it too; `merge` appends *"N milestone(s) need checking"* when unchecked flags remain.
+- **Worker on save:** if the summary is available, recompute with `withChecks` (authoritative, keeps the client's
+  tick only when `actual` matches). If PlayHQ is unreachable, store the client's `check` as sent (already
+  validated by the schema).
+- **Display:** flagged rows in the form show the warning and a "Checked" checkbox bound to `check.checked`; the
+  review and read-only views show *"⚠ Not checked"* / *"Checked ✓"*. The explainer (`<details>`) and the
+  per-question rule lines come from `shared/text.ts`, keyed by rule kind and share.
+- **List and CSV:** `GameRow.uncheckedCount`; the Milestones cell renders `3 (1 to check)`; `followUp=1` also
+  matches `uncheckedCount > 0`; `milestones.csv` adds a `Check` column (blank / `Needs check` / `Checked`).
+
 ## 9. API
 
 All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<human text>", "fields"?: {…} }`.
@@ -356,7 +412,7 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 |---|---|---|---|
 | `GET /api/teams` | — | `[{slug, name, mascot}]` | Team list for `/` |
 | `GET /api/teams/:slug` | — | `{team:{slug,name,grade,mascot}, season, today, squad:[{key,label}], fixture: {available, games:[{gameId, date, round, opposition, venue, status, reportStatus, selectable}]}, defaultGameId}` | `404 team_not_found`. `fixture.available=false` when no grade or PlayHQ unreachable with no cache. |
-| `GET /api/teams/:slug/games/:gameId` | — | `{game, report?: ReportOut, start?: PlayhqStartData}` | `report` if one exists (no PlayHQ call); else `start` (summary-derived scores, milestone candidates, Q1 default). `start.available=false` if PlayHQ is unreachable. |
+| `GET /api/teams/:slug/games/:gameId` | — | `{game, report: ReportOut \| null, start: PlayhqStartData}` | `report` if one exists. `start` always (cached summary: scores, milestone candidates, Q1 default, milestone `rule` and player `figures`, §8.5). `start.available=false` if PlayHQ is unreachable. |
 | `POST /api/teams/:slug/games/:gameId/refresh` | — | `{start: PlayhqStartData, rateLimited?: true}` | Bypasses cache; `REFRESH_LIMIT`. |
 | `PUT /api/teams/:slug/games/:gameId/report` | `ReportIn` incl. `baseVersion` (0 for new) | `ReportOut` | Validates with `shared/validation.ts` + server checks (§9.1). `409 version_conflict` with `{latest: ReportOut}`. `WRITE_LIMIT` per IP. |
 | `POST /api/photos` | `image/jpeg` body ≤ 2 MB | `{id}` | Checks JPEG magic bytes. `WRITE_LIMIT` per IP. |
@@ -373,6 +429,7 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 - If PlayHQ has the result (from cache/fetch at save time), stored scores come from PlayHQ and `score_source =
   'playhq'`; client-sent scores are ignored. Otherwise the coach's validated scores are stored with score_source = 'entered'.
 - At most 5 photo IDs; each exists and is unattached or attached to this report.
+- Milestone check flags are recomputed from the summary when it is available (§8.5).
 - Save is one D1 `batch()`: upsert report (incrementing `version`), replace milestones, attach/detach photos, insert
   `named_players` rows, insert `report_versions` snapshot.
 
