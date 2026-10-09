@@ -62,6 +62,24 @@ describe('GET /api/teams/:slug', () => {
     expect(body.fixture.games.slice(0, 2).map((g) => g.reportStatus)).toEqual(['reported', 'not_played']);
   });
 
+  it("lists the games each player has won each award in, for this team's season only", async () => {
+    const insert = (id: string, season: string, team: string, game: string, potd: string | null, mascot: string | null) =>
+      env.DB.prepare(
+        `INSERT INTO reports (id, season_id, team_slug, game_id, game_date, scoring, potd_key, mascot_key, version, updated_at)
+         VALUES (?, ?, ?, ?, '2026-01-24', 'yes', ?, ?, 1, '2026-01-25T00:00:00Z')`,
+      ).bind(id, season, team, game, potd, mascot).run();
+    await insert('r1', 'season-test', 'pumas', 'g1', 'p001', 'p002');
+    await insert('r2', 'season-test', 'pumas', 'g2', 'p001', null);
+    await insert('r3', 'season-old', 'pumas', 'x1', 'p004', 'p004');
+    await insert('r4', 'season-test', 'tigers', 'y1', 'p003', 'p003');
+    const { body } = await get('/api/teams/pumas');
+    expect(body.awards).toEqual({ potd: { p001: ['g1', 'g2'] }, mascot: { p002: ['g1'] } });
+  });
+
+  it('has empty awards before any reports', async () => {
+    expect((await get('/api/teams/pumas')).body.awards).toEqual({ potd: {}, mascot: {} });
+  });
+
   it('opens with capital letters in the link', async () => {
     expect((await get('/api/teams/Pumas')).res.status).toBe(200);
   });

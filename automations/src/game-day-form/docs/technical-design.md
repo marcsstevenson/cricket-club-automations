@@ -414,7 +414,7 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 | Method & path | Request | Response | Notes |
 |---|---|---|---|
 | `GET /api/teams` | — | `[{slug, name, mascot}]` | Team list for `/` |
-| `GET /api/teams/:slug` | — | `{team:{slug,name,grade,mascot}, season, today, squad:[{key,label}], fixture: {available, games:[{gameId, date, round, opposition, venue, status, reportStatus, selectable}]}, defaultGameId}` | `404 team_not_found`. `fixture.available=false` when no grade or PlayHQ unreachable with no cache. |
+| `GET /api/teams/:slug` | — | `{team:{slug,name,grade,mascot}, season, today, squad:[{key,label}], fixture: {available, games:[{gameId, date, round, opposition, venue, status, reportStatus, selectable}]}, defaultGameId, awards: {potd: {key: gameId[]}, mascot: {key: gameId[]}}}` | `404 team_not_found`. `awards` lists this season's wins per squad key (from `reports`); the form counts them excluding the current game. `fixture.available=false` when no grade or PlayHQ unreachable with no cache. |
 | `GET /api/teams/:slug/games/:gameId` | — | `{game, report: ReportOut \| null, start: PlayhqStartData}` | `report` if one exists. `start` always (cached summary: scores, milestone candidates, Q1 default, milestone `rule` and player `figures`, §8.5). `start.available=false` if PlayHQ is unreachable. |
 | `POST /api/teams/:slug/games/:gameId/refresh` | — | `{start: PlayhqStartData, rateLimited?: true}` | Bypasses cache; `REFRESH_LIMIT`. |
 | `PUT /api/teams/:slug/games/:gameId/report` | `ReportIn` incl. `baseVersion` (0 for new) | `ReportOut` | Validates with `shared/validation.ts` + server checks (§9.1). `409 version_conflict` with `{latest: ReportOut}`. `WRITE_LIMIT` per IP. |

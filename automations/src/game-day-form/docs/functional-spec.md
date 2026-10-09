@@ -149,11 +149,14 @@ Two score blocks, each with **Wickets** and **Runs**:
 
 ### Q3. Player of the day *(required unless Game not played)*
 
-Squad picker. Exactly one player.
+Squad picker. Exactly one player. Each name ends with how many times that player has already won Player of the day
+this season for this team, e.g. *Ben S. (2)*, *Ava B. (0)*, so coaches can favour players yet to win. The game being
+reported is not counted (editing a report doesn't count its own winner). Only squad players are counted; "Other…" and
+non-squad winners are not. A note above the pickers explains the number.
 
 ### Q4. Mascot of the day *(required unless Game not played)*
 
-Squad picker. Exactly one player. May be the same player as Q3.
+Squad picker. Exactly one player. May be the same player as Q3. Shows earlier Mascot of the day wins the same way as Q3.
 
 ### Q5. Any game highlights, special moments or comments you'd like to add? *(optional)*
 

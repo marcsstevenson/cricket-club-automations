@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { priorWins, withWins } from '$shared/awards';
   import type { PlayerChoice } from '$shared/types';
   import FieldError from './FieldError.svelte';
 
@@ -10,7 +11,21 @@
     label,
     error,
     onedit,
-  }: { value: PlayerChoice | null; squad: { key: string; label: string }[]; id: string; label: string; error?: string; onedit?: () => void } = $props();
+    wins,
+    gameId,
+  }: {
+    value: PlayerChoice | null;
+    squad: { key: string; label: string }[];
+    id: string;
+    label: string;
+    error?: string;
+    onedit?: () => void;
+    /** Game IDs each squad player has won this award in; shown as a count after their name. */
+    wins?: Record<string, string[]>;
+    gameId?: string;
+  } = $props();
+
+  const optionLabel = (p: { key: string; label: string }) => (wins && gameId ? withWins(p.label, priorWins(wins, p.key, gameId)) : p.label);
 
   // A saved or PlayHQ person who isn't in the squad stays selectable even after switching away.
   type Kept = Extract<PlayerChoice, { kind: 'named' | 'playhq' }>;
@@ -39,7 +54,7 @@
 <label class="field" for={id}>{label}</label>
 <select {id} value={selected} onchange={(e) => choose(e.currentTarget.value)} aria-invalid={!!error}>
   <option value="">Choose a player…</option>
-  {#each squad as p (p.key)}<option value={`s:${p.key}`}>{p.label}</option>{/each}
+  {#each squad as p (p.key)}<option value={`s:${p.key}`}>{optionLabel(p)}</option>{/each}
   {#if original}<option value="current">{original.label}</option>{/if}
   <option value="other">Other…</option>
 </select>

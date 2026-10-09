@@ -41,7 +41,7 @@ test('submit once, view read-only without full names, then edit', async ({ page 
   await page.locator('#opp-wkts').fill('7');
   await page.locator('#opp-runs').fill('9a0'); // non-digits are dropped
   await expect(page.locator('#opp-runs')).toHaveValue('90');
-  await page.locator('#potd').selectOption({ label: 'Alex T.' });
+  await page.locator('#potd').selectOption({ label: 'Alex T. (0)' });
   await page.locator('#mascot').selectOption('other');
   await page.locator('#mascot-other').fill('Chris Pratt');
   await page.getByRole('button', { name: 'Next: review' }).click();
@@ -56,10 +56,17 @@ test('submit once, view read-only without full names, then edit', async ({ page 
   expect(await page.content()).not.toContain('Pratt');
 
   await page.getByRole('button', { name: 'Edit' }).click();
+  await expect(page.locator('#potd option:checked')).toHaveText('Alex T. (0)'); // this game's own win isn't counted
   await page.locator('#highlights').fill('Great catch by the keeper');
   await page.getByRole('button', { name: 'Next: review' }).click();
   await page.getByRole('button', { name: 'Submit' }).click();
   await expect(page.getByText('Great catch by the keeper')).toBeVisible();
+});
+
+test("award pickers show each player's earlier wins this season", async ({ page }) => {
+  await page.goto('/pumas?game=e2e-g2');
+  await expect(page.locator('#potd option', { hasText: 'Alex T.' })).toHaveText('Alex T. (1)');
+  await expect(page.locator('#mascot option', { hasText: 'Alex T.' })).toHaveText('Alex T. (0)'); // mascot went to "Other"
 });
 
 test('validation errors show next to the questions', async ({ page }) => {

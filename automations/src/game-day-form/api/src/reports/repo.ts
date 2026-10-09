@@ -1,3 +1,4 @@
+import type { AwardGames } from '../../../shared/src/api';
 import type { MilestoneCheck, MilestoneType, NotPlayedReason, Scoring, Source } from '../../../shared/src/types';
 
 export async function reportStatuses(db: D1Database, seasonId: string, teamSlug: string) {
@@ -6,6 +7,20 @@ export async function reportStatuses(db: D1Database, seasonId: string, teamSlug:
     .bind(seasonId, teamSlug)
     .all<{ game_id: string; scoring: string }>();
   return new Map(results.map((r) => [r.game_id, r.scoring === 'not_played' ? ('not_played' as const) : ('reported' as const)]));
+}
+
+/** Squad players' award wins this season, as game IDs, so the form can count wins excluding the game being edited. */
+export async function awardGames(db: D1Database, seasonId: string, teamSlug: string): Promise<AwardGames> {
+  const { results } = await db
+    .prepare('SELECT game_id, potd_key, mascot_key FROM reports WHERE season_id = ? AND team_slug = ? ORDER BY game_date, game_id')
+    .bind(seasonId, teamSlug)
+    .all<{ game_id: string; potd_key: string | null; mascot_key: string | null }>();
+  const awards: AwardGames = { potd: {}, mascot: {} };
+  for (const r of results) {
+    if (r.potd_key) (awards.potd[r.potd_key] ??= []).push(r.game_id);
+    if (r.mascot_key) (awards.mascot[r.mascot_key] ??= []).push(r.game_id);
+  }
+  return awards;
 }
 
 export interface NamedPlayer {

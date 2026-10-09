@@ -26,6 +26,13 @@ export interface TeamPage {
   squad: { key: string; label: string }[];
   fixture: { available: boolean; games: GameOption[] };
   defaultGameId: string | null;
+  /** This season's award wins per squad key: the game IDs each player won Player / Mascot of the day in. */
+  awards: AwardGames;
+}
+
+export interface AwardGames {
+  potd: Record<string, string[]>;
+  mascot: Record<string, string[]>;
 }
 
 export type ReportOut = FormState & { version: number; updatedAt: string };
