@@ -67,6 +67,8 @@ npx wrangler kv key put squad --path=squad.json --binding=CONFIG --remote
 npm run deploy
 ```
 
+To refresh it from the club's Team Formation sheet and PlayHQ (new teams, players, grade IDs), use the Claude Code skill `refresh-squad` (`.claude/skills/refresh-squad/` at the repo root).
+
 ## New season
 
 Upload a new squad JSON with the new `playhqSeasonId` (and grade IDs once PlayHQ allocates them).
