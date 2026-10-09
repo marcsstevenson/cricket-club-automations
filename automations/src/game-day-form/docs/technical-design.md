@@ -43,7 +43,7 @@ anonymous player key.
 | Squad data | KV key `squad`, uploaded with wrangler | Kept out of git and out of the client bundle; updatable without redeploying. |
 | PlayHQ cache | KV, stale-while-revalidate | Minimal PlayHQ traffic; keeps serving the last good copy if PlayHQ is down. |
 | Validation | Shared module (valibot) used by both sides | Instant feedback in the browser; the Worker is the authority on save. |
-| Admin protection | Shared passcode (Worker secret) | Simple on `*.workers.dev`. Switch to Cloudflare Access when a custom domain is added. |
+| Admin protection | Shared passcode (Worker secret) | Simple. Cloudflare Access is an option now the custom domain is in place (§14.5). |
 | Language | TypeScript throughout | Types are shared between UI and API. |
 
 ## 3. Repository layout
@@ -511,17 +511,21 @@ npx wrangler deploy
 
 - **Local:** `npm run dev` → `wrangler dev` with local D1/R2/KV, `.dev.vars` secrets, the fake test squad, and either
   live PlayHQ or the local stub (`--var PLAYHQ_BASE_URL:http://127.0.0.1:8790`).
-- **Production:** `pcc-game-day.<account>.workers.dev`.
+- **Production:** `gameday.parklandscricket.co.nz` (custom domain; `workers_dev` off).
+- **Demo:** `gameday-demo.parklandscricket.co.nz` (`--env demo`).
+
+Both run in the Cloudflare account that holds the `parklandscricket.co.nz` zone (`account_id` in `wrangler.jsonc`):
+Workers custom domains need the Worker and the zone in the same account.
 
 ### 14.4 Season rollover
 
 Upload a new `squad.json` with the new `playhqSeasonId` (and new grade IDs once allocated). Old reports stay in D1
 keyed by season and drop out of the current-season views.
 
-### 14.5 Moving to a custom domain later
+### 14.5 Custom domain and admin protection
 
-Add the route in `wrangler.jsonc`, then put Cloudflare Access in front of `/admin*` and `/api/admin/*` and remove the
-passcode check.
+The custom domains are in place (§14.3). Still to decide: put Cloudflare Access in front of `/admin*` and
+`/api/admin/*` and remove the passcode check.
 
 ## 15. Branding
 

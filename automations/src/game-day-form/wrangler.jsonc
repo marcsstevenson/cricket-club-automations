@@ -1,19 +1,24 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "pcc-game-day",
+  // The club's Cloudflare account: custom domains need the Worker and the parklandscricket.co.nz zone in one account.
+  "account_id": "0e8ee95956eccb89203d31cf3fca2606",
   "main": "api/src/index.ts",
   "compatibility_date": "2026-08-22",
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [{ "pattern": "gameday.parklandscricket.co.nz", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
   "assets": {
     "directory": "./web/build",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "pcc-game-day", "database_id": "c6048a56-7638-4c82-aafb-8c9baf840ce3", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "pcc-game-day", "database_id": "8c555010-55c8-4a70-9819-d354210728d1", "migrations_dir": "migrations" }
   ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "pcc-game-day-photos" }],
-  "kv_namespaces": [{ "binding": "CONFIG", "id": "0e3a0b0b495a4e43bdfee18ab1aee82f" }],
+  "kv_namespaces": [{ "binding": "CONFIG", "id": "4cdb424dc09b4336a06f194fbf5bb15d" }],
   "ratelimits": [
     { "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
     { "name": "REFRESH_LIMIT", "namespace_id": "1002", "simple": { "limit": 1, "period": 60 } },
@@ -31,11 +36,12 @@
   "env": {
     "demo": {
       "name": "pcc-game-day-demo",
+      "routes": [{ "pattern": "gameday-demo.parklandscricket.co.nz", "custom_domain": true }],
       "d1_databases": [
-        { "binding": "DB", "database_name": "pcc-game-day-demo", "database_id": "02c8311d-68b7-48f5-b8b1-2ba829f21d60", "migrations_dir": "migrations" }
+        { "binding": "DB", "database_name": "pcc-game-day-demo", "database_id": "6d415bdd-f044-48b4-ab05-f5898718eec3", "migrations_dir": "migrations" }
       ],
       "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "pcc-game-day-demo-photos" }],
-      "kv_namespaces": [{ "binding": "CONFIG", "id": "f03102f995f44b3982765fe8a81855ba" }],
+      "kv_namespaces": [{ "binding": "CONFIG", "id": "90d064e8d6444048a016999529fc4dd4" }],
       "ratelimits": [
         { "name": "WRITE_LIMIT", "namespace_id": "2001", "simple": { "limit": 30, "period": 60 } },
         { "name": "REFRESH_LIMIT", "namespace_id": "2002", "simple": { "limit": 1, "period": 60 } },

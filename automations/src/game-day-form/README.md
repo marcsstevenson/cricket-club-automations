@@ -44,6 +44,8 @@ Download *Team certs and mascots/Mascots* from SharePoint into `assets-src/masco
 
 ## Deploy
 
+Live at <https://gameday.parklandscricket.co.nz> (demo: <https://gameday-demo.parklandscricket.co.nz>). Both Workers run in the Cloudflare account that holds the `parklandscricket.co.nz` zone (`account_id` in `wrangler.jsonc`), because a custom domain needs the Worker and the zone in one account. Your Cloudflare login needs Workers Platform Admin on that account; run `npx wrangler login` again after access changes.
+
 ```bash
 npm run deploy      # build SPA, apply D1 migrations, wrangler deploy
 ```
@@ -52,7 +54,7 @@ Reports saved before migration 0002 (milestone check flags) carry no flags until
 
 ## First deploy
 
-One-time setup. `wrangler.jsonc` ships with placeholder ids; replace them before deploying.
+One-time setup in a new account; put the new ids into `wrangler.jsonc`. The account needs a workers.dev subdomain (open *Workers & Pages* in the dashboard once) or the nightly cron won't deploy, even though `workers_dev` is off.
 
 ```bash
 npx wrangler login
