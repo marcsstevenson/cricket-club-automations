@@ -106,9 +106,8 @@
 
     <fieldset class="card" id="sec-awards">
       <legend>Awards</legend>
-      <p class="note">The number after each name is how many times they've already won it this season.</p>
-      <PlayerPicker id="potd" label="Player of the day" squad={team.squad} bind:value={form.state.potd} error={form.errors.potd} wins={team.awards.potd} {gameId} />
-      <PlayerPicker id="mascot" label="Mascot of the day" squad={team.squad} bind:value={form.state.mascot} error={form.errors.mascot} wins={team.awards.mascot} {gameId} />
+      <PlayerPicker id="potd" label="Player of the day (previous win count)" squad={team.squad} bind:value={form.state.potd} error={form.errors.potd} wins={team.awards.potd} {gameId} />
+      <PlayerPicker id="mascot" label="Mascot of the day (previous win count)" squad={team.squad} bind:value={form.state.mascot} error={form.errors.mascot} wins={team.awards.mascot} {gameId} />
     </fieldset>
 
     <fieldset class="card" id="sec-highlights">
