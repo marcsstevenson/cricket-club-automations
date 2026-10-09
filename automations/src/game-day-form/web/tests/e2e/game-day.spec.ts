@@ -67,6 +67,18 @@ test("award pickers show each player's earlier wins this season", async ({ page 
   await page.goto('/pumas?game=e2e-g2');
   await expect(page.locator('#potd option', { hasText: 'Alex T.' })).toHaveText('Alex T. (1)');
   await expect(page.locator('#mascot option', { hasText: 'Alex T.' })).toHaveText('Alex T. (0)'); // mascot went to "Other"
+
+  await page.getByRole('button', { name: 'Player of the day winners' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Player of the day — this season' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.winners li')).toHaveCount(1);
+  await expect(dialog.locator('.winners li')).toContainText('Alex T.');
+  await expect(dialog.locator('.win-counts tbody td:first-child')).toHaveText(['Jordan L.', 'Sam Ta.', 'Sam Th.', 'Alex T.']);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole('button', { name: 'Mascot of the day winners' }).click();
+  await expect(page.getByRole('dialog', { name: 'Mascot of the day — this season' }).getByText('No winners yet this season.')).toBeVisible();
 });
 
 test('validation errors show next to the questions', async ({ page }) => {

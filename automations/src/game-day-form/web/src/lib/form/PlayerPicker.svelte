@@ -1,7 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { priorWins, withWins } from '$shared/awards';
+  import type { GameOption } from '$shared/api';
   import type { PlayerChoice } from '$shared/types';
+  import AwardWinners from './AwardWinners.svelte';
   import FieldError from './FieldError.svelte';
 
   let {
@@ -13,6 +15,8 @@
     onedit,
     wins,
     gameId,
+    award,
+    games,
   }: {
     value: PlayerChoice | null;
     squad: { key: string; label: string }[];
@@ -23,6 +27,9 @@
     /** Game IDs each squad player has won this award in; shown as a count after their name. */
     wins?: Record<string, string[]>;
     gameId?: string;
+    /** Award name for the winners popup, e.g. "Player of the day". */
+    award?: string;
+    games?: GameOption[];
   } = $props();
 
   const optionLabel = (p: { key: string; label: string }) => (wins && gameId ? withWins(p.label, priorWins(wins, p.key, gameId)) : p.label);
@@ -51,7 +58,14 @@
   }
 </script>
 
-<label class="field" for={id}>{label}</label>
+{#if award && wins && games && gameId}
+  <div class="label-row">
+    <label class="field" for={id}>{label}</label>
+    <AwardWinners {award} {wins} {squad} {games} {gameId} />
+  </div>
+{:else}
+  <label class="field" for={id}>{label}</label>
+{/if}
 <select {id} value={selected} onchange={(e) => choose(e.currentTarget.value)} aria-invalid={!!error}>
   <option value="">Choose a player…</option>
   {#each squad as p (p.key)}<option value={`s:${p.key}`}>{optionLabel(p)}</option>{/each}

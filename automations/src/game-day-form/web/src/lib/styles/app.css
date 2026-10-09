@@ -60,3 +60,19 @@ input[readonly] { background: var(--pcc-bg); border-style: dashed; }
 .badge-check { background: #fff4d6; color: var(--pcc-navy-900); margin-left: 6px; }
 .explainer { margin: 4px 0 12px; }
 .explainer summary { cursor: pointer; font-weight: 600; }
+.label-row { display: flex; align-items: center; gap: 6px; margin: 12px 0 4px; }
+.label-row .field { margin: 0; }
+.icon-btn { background: none; border: 1px solid transparent; border-radius: var(--radius); padding: 2px 6px; font-size: 1.1rem; line-height: 1; cursor: pointer; color: var(--pcc-navy-700); }
+.icon-btn:hover, .icon-btn:focus-visible { border-color: var(--pcc-grey-300); }
+.modal { width: min(92vw, 480px); max-height: 85vh; padding: 0; border: 1px solid var(--pcc-grey-300); border-radius: var(--radius); background: var(--pcc-surface); color: var(--pcc-navy-900); }
+.modal::backdrop { background: rgb(0 0 0 / 0.45); }
+.modal-body { padding: 16px; }
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.modal-head h2 { margin: 0; font-size: 1.2rem; }
+.modal h3 { font-size: 1rem; margin: 16px 0 6px; }
+.winners { list-style: none; padding: 0; margin: 0; }
+.winners li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--pcc-grey-300); }
+.winners li span { color: var(--pcc-grey-600); }
+.win-counts { width: 100%; border-collapse: collapse; }
+.win-counts th, .win-counts td { text-align: left; padding: 6px 0; border-bottom: 1px solid var(--pcc-grey-300); }
+.win-counts th:last-child, .win-counts td:last-child { text-align: right; }
