@@ -11,6 +11,7 @@ a { color: var(--pcc-blue-700); }
 
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px var(--gutter); background: var(--pcc-surface); border-top: 6px solid var(--pcc-navy-900); }
 .site-header img { display: block; height: 40px; width: auto; }
+.site-header nav { display: flex; gap: 16px; }
 .site-header nav a { font-family: var(--font-head); font-weight: 700; text-transform: uppercase; text-decoration: none; color: var(--pcc-navy-700); }
 
 .hero, .team-band { background: var(--pcc-navy-700); color: #fff; margin: 0 0 var(--gutter); padding: 24px var(--gutter); }

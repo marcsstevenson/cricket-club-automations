@@ -560,7 +560,8 @@ blue-700 on bg 7.6:1. Teal-600 (3.7:1 on white) is used only for non-text elemen
 
 ### 15.3 Layout
 
-- **Header:** light bar with the club's horizontal logo (links to `/`) and an **All games** link.
+- **Header:** light bar with the club's horizontal logo (links to `/`) and, once the admin passcode is accepted in that tab, **All games** and **Admin** links
+  (`$lib/admin.svelte.ts`, `sessionStorage`). Hiding is cosmetic: `/games` and the plain CSV exports stay open.
 - **Team header band** (team page): navy-700 background; mascot on a white rounded card on the left; team name in
   Outfit 800 uppercase teal-400; grade and season in white.
 - **Home page (`/`):** grid of team cards — mascot thumbnail plus team name — linking to each team page.

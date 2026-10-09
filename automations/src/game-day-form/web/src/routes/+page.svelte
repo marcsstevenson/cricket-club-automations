@@ -1,5 +1,6 @@
 <script lang="ts">
   import Mascot from '$lib/Mascot.svelte';
+  import { admin } from '$lib/admin.svelte';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
@@ -15,4 +16,4 @@
     <li><a class="team-card" href="/{t.slug}"><Mascot name={t.mascot} size="sm" /><span class="team-name">{t.name}</span></a></li>
   {/each}
 </ul>
-<p><a href="/games">See all games →</a></p>
+{#if admin.passcode}<p><a href="/games">See all games →</a></p>{/if}

@@ -68,6 +68,29 @@ test('validation errors show next to the questions', async ({ page }) => {
   await expect(page.getByText('Choose a player.').first()).toBeVisible();
 });
 
+test('All games and Admin menu items appear only after the admin passcode is accepted', async ({ page }) => {
+  await page.goto('/');
+  const nav = page.locator('.site-header nav');
+  await expect(nav).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /See all games/ })).toHaveCount(0);
+
+  await page.goto('/admin');
+  await page.getByLabel('Admin passcode').fill('wrong');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Wrong passcode.');
+  await expect(nav).toHaveCount(0);
+
+  await page.getByLabel('Admin passcode').fill('e2e-pass');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(nav.getByRole('link', { name: 'All games' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Admin' })).toBeVisible();
+
+  await nav.getByRole('link', { name: 'All games' }).click();
+  await expect(page).toHaveURL(/\/games$/);
+  await page.reload();
+  await expect(nav.getByRole('link', { name: 'Admin' })).toBeVisible();
+});
+
 test('all games marks the unreported past game as Missing', async ({ page }) => {
   await page.goto('/games');
   await expect(page.locator('tr.missing')).toContainText('Syd Martin Scorchers');

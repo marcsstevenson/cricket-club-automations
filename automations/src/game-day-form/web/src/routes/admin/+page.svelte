@@ -1,14 +1,10 @@
 <script lang="ts">
-  let passcode = $state('');
-  let ok = $state(false);
+  import { admin, lock, unlock } from '$lib/admin.svelte';
+
+  let passcode = $state(admin.passcode);
+  let ok = $state(admin.passcode !== '');
   let msg = $state('');
   let busy = $state(false);
-
-  try {
-    passcode = sessionStorage.getItem('pcc-admin') ?? '';
-  } catch {
-    /* storage blocked */
-  }
 
   const headers = () => ({ 'x-admin-passcode': passcode });
 
@@ -18,14 +14,11 @@
     try {
       const res = await fetch('/api/admin/check', { headers: headers() });
       ok = res.ok;
-      if (ok) {
-        try {
-          sessionStorage.setItem('pcc-admin', passcode);
-        } catch {
-          /* ignore */
-        }
-      } else if (res.status === 401) msg = 'Wrong passcode.';
-      else if (res.status === 429) msg = 'Too many attempts — wait a minute.';
+      if (ok) unlock(passcode);
+      else if (res.status === 401) {
+        lock();
+        msg = 'Wrong passcode.';
+      } else if (res.status === 429) msg = 'Too many attempts — wait a minute.';
       else if (res.status === 503) msg = 'Admin exports are not configured.';
       else msg = 'Something went wrong.';
     } catch {
@@ -42,6 +35,7 @@
       if (!res.ok) {
         if (res.status === 401) {
           ok = false;
+          lock();
           msg = 'Wrong passcode — enter it again.';
         } else msg = res.status === 429 ? 'Too many requests — wait a minute.' : 'Download failed.';
         return;

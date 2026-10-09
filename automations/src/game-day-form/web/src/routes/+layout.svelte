@@ -5,12 +5,13 @@
   import '@fontsource/lexend/latin-600.css';
   import '$lib/styles/tokens.css';
   import '$lib/styles/app.css';
+  import { admin } from '$lib/admin.svelte';
 
   let { children } = $props();
 </script>
 
 <header class="site-header">
   <a href="/"><img src="/brand/pcc-logo-horizontal.svg" alt="Parklands Cricket Club" width="172" height="40" /></a>
-  <nav><a href="/games">All games</a></nav>
+  {#if admin.passcode}<nav><a href="/games">All games</a><a href="/admin">Admin</a></nav>{/if}
 </header>
 <main>{@render children()}</main>

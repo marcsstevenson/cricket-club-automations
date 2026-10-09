@@ -383,7 +383,9 @@ submitting, reopening the same game offers *"Resume your unsaved report?"*. The 
 
 ## 8. All-games list and export
 
-**Link:** `…/games`. Club-wide, current season, no sign-in.
+**Link:** `…/games`. Club-wide, current season, no sign-in. The page itself is open to anyone with the link, but the
+**All games** menu item (and the home page's "See all games" link) only shows once the admin passcode has been
+accepted on `…/admin` in that browser tab (§8.4).
 
 ### 8.1 Table
 
@@ -438,7 +440,9 @@ full names there, but this is not enforced.
 ### 8.4 Admin exports
 
 **Link:** `…/admin`. Asks for the club's admin passcode, then offers the same two CSVs with an added
-**full name** column for every player column. Wrong passcodes are limited to 5 attempts a minute.
+**full name** column for every player column. Wrong passcodes are limited to 5 attempts a minute. Once accepted, the
+header shows **All games** and **Admin** menu items for the rest of that browser tab; a later wrong-passcode response
+hides them again.
 
 ---
 
