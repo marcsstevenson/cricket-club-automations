@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.dev.vars
+web/build/
+web/.svelte-kit/
+web/node_modules/
+test-results/
+playwright-report/

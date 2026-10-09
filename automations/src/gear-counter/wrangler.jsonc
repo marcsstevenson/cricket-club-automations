@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pcc-gear-counter",
+  // The club's Cloudflare account, served on its workers.dev URL (no custom domain).
+  "account_id": "0e8ee95956eccb89203d31cf3fca2606",
+  "main": "api/src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./web/build",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "pcc-gear-counter", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+  ],
+  "ratelimits": [{ "name": "WRITE_LIMIT", "namespace_id": "3001", "simple": { "limit": 300, "period": 60 } }],
+  "observability": { "enabled": true },
+  "dev": { "port": 8788 }
+}

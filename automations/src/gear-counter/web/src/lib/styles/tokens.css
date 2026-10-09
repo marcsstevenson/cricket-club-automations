@@ -1,0 +1,16 @@
+:root {
+  --pcc-navy-900: #02152b;
+  --pcc-navy-700: #052f5f;
+  --pcc-teal-400: #40beb3;
+  --pcc-teal-600: #22948a;
+  --pcc-blue-700: #005377;
+  --pcc-bg: #f4f4f4;
+  --pcc-surface: #ffffff;
+  --pcc-error: #b42318;
+  --pcc-grey-600: #5d5d5d;
+  --pcc-grey-300: #c0c4c6;
+  --font-head: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Lexend', system-ui, sans-serif;
+  --radius: 4px;
+  --gutter: 16px;
+}

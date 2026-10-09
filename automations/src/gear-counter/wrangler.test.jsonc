@@ -1,0 +1,7 @@
+{
+  "name": "pcc-gear-counter-test",
+  "main": "api/src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{ "binding": "DB", "database_name": "test", "database_id": "test" }]
+}
