@@ -20,28 +20,25 @@ test('home lists the teams and the club pool', async ({ page }) => {
 test('a team starts with its Kit Spec at 0 and counts with + and −', async ({ page }) => {
   await page.goto('/penguins');
   await expect(page.locator('#stocktake option:checked')).toHaveText(todayLabel);
-  await expect(page.locator('.progress')).toHaveText('0 of 14 lines complete · 64 items short');
+  await expect(page.locator('.progress')).toHaveText('0 items counted');
   await expect(page.getByRole('heading', { name: 'Senior kit' })).toHaveCount(0);
 
   const bases = line(page, 'Black rubber bases');
   await expect(bases.getByRole('button', { name: 'One less Black rubber bases' })).toBeDisabled();
-  await expect(bases.locator('.done')).toHaveCount(0);
-  await expect(page.getByText(/short \d|\+\d+ over/)).toHaveCount(0);
+  await expect(page.getByText(/lines complete|items short|✓/)).toHaveCount(0);
   await bases.getByRole('button', { name: 'One more Black rubber bases' }).click();
-  await expect(bases.locator('.qty')).toHaveText('1 / 1');
-  await expect(bases.locator('.done')).toHaveText('✓');
+  await expect(bases.locator('.qty')).toHaveText('1');
 
   const tees = line(page, 'Yellow batting tee');
   for (let i = 0; i < 6; i++) await tees.getByRole('button', { name: 'One more Yellow batting tee' }).click();
-  await expect(tees.locator('.qty')).toHaveText('6 / 5');
-  await expect(tees.locator('.done')).toHaveCount(0);
+  await expect(tees.locator('.qty')).toHaveText('6');
   await tees.getByRole('button', { name: 'One less Yellow batting tee' }).click();
-  await expect(tees.locator('.qty')).toHaveText('5 / 5');
+  await expect(tees.locator('.qty')).toHaveText('5');
   await expect(page.getByText('All changes saved')).toBeVisible();
 
   await page.reload();
-  await expect(line(page, 'Black rubber bases').locator('.qty')).toHaveText('1 / 1');
-  await expect(page.locator('.progress')).toHaveText('2 of 14 lines complete · 58 items short');
+  await expect(line(page, 'Black rubber bases').locator('.qty')).toHaveText('1');
+  await expect(page.locator('.progress')).toHaveText('6 items counted');
 });
 
 test('items can be added from the modal and removed while at 0', async ({ page }) => {
@@ -71,22 +68,22 @@ test('New (today) reopens today’s stocktake', async ({ page }) => {
   await page.locator('#stocktake').selectOption('new');
   await expect(page).toHaveURL(/\?s=/);
   await expect(page.locator('#stocktake option')).toHaveText([todayLabel, 'New (today)']);
-  await expect(line(page, 'Black rubber bases').locator('.qty')).toHaveText('1 / 1');
+  await expect(line(page, 'Black rubber bases').locator('.qty')).toHaveText('1');
 });
 
 test('taps made offline sync when the signal returns', async ({ page, context }) => {
   await page.goto('/pumas');
   const helmets = line(page, 'J [53-54, age 7-10]');
-  await expect(helmets.locator('.qty')).toHaveText('0 / 2');
+  await expect(helmets.locator('.qty')).toHaveText('0');
   await context.setOffline(true);
   await helmets.getByRole('button', { name: /One more/ }).click();
   await helmets.getByRole('button', { name: /One more/ }).click();
   await expect(page.getByText('Offline — will sync')).toBeVisible();
-  await expect(helmets.locator('.qty')).toHaveText('2 / 2');
+  await expect(helmets.locator('.qty')).toHaveText('2');
   await context.setOffline(false);
   await expect(page.getByText('All changes saved')).toBeVisible({ timeout: 15_000 });
   await page.reload();
-  await expect(line(page, 'J [53-54, age 7-10]').locator('.qty')).toHaveText('2 / 2');
+  await expect(line(page, 'J [53-54, age 7-10]').locator('.qty')).toHaveText('2');
 });
 
 test('the club pool lists every item with counts only', async ({ page }) => {

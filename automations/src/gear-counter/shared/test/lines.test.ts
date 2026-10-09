@@ -3,20 +3,10 @@ import { dateLabel, nzDate } from '../src/dates';
 import { progressText } from '../src/lines';
 
 describe('progressText', () => {
-  it('counts complete lines and missing items', () => {
-    const lines = [
-      { count: 2, expected: 2 },
-      { count: 0, expected: 3 },
-      { count: 6, expected: 5 },
-      { count: 1, expected: 0 },
-    ];
-    expect(progressText(lines)).toBe('2 of 3 lines complete · 3 items short');
-    expect(progressText([{ count: 2, expected: 2 }])).toBe('1 of 1 lines complete');
-  });
-
-  it('just totals the pool', () => {
-    expect(progressText([{ count: 1, expected: 0 }])).toBe('1 item counted');
-    expect(progressText([{ count: 4, expected: 0 }, { count: 0, expected: 0 }])).toBe('4 items counted');
+  it('totals the counts without comparing to the Kit Spec', () => {
+    expect(progressText([{ count: 1 }])).toBe('1 item counted');
+    expect(progressText([{ count: 4 }, { count: 0 }, { count: 2 }])).toBe('6 items counted');
+    expect(progressText([])).toBe('0 items counted');
   });
 });
 

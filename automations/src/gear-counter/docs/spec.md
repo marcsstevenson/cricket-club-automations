@@ -5,8 +5,8 @@ It sits beside the game-day site and uses the same stack (Cloudflare Worker + Ho
 
 ## 1. Who and why
 
-Gear volunteers count what is in each team's kit bag against the club's Kit Spec, so shortfalls show up
-before the bag goes out. The club pool (spare gear in storage) is counted the same way. There is no login
+Gear volunteers count what is in each team's kit bag. The club's Kit Spec is a guide to what a bag
+should hold: it decides which items are listed, but counts are not compared against it. The club pool (spare gear in storage) is counted the same way. There is no login
 and no admin: anyone with the link can count, like the game-day team pages.
 
 ## 2. Data sources
@@ -47,10 +47,9 @@ Club pool card last.
 - **Stocktake** dropdown: the team's stocktakes, named by NZ date (e.g. "9 Oct 2026"), newest first, with
   **New (today)** as the last option. Opening the page selects the newest; if the team has none, today's is created.
   Choosing New creates today's stocktake, or reopens it if one is already dated today (at most one per team per day).
-- A summary line: "12 of 20 lines complete · 5 items short".
-- Lines grouped by category in catalogue order. Each line: name, `[−] count / expected [+]`, and a ✓ when
-  count = expected. There are no "short" or "over" labels on lines. Lines with expected 0 (pool lines and
-  added lines) show the count only, without "/ expected"; added lines are tagged "Added".
+- A summary line with the total: "23 items counted".
+- Lines grouped by category in catalogue order. Each line: name and `[−] count [+]`. The Kit Spec quantity
+  is not shown and there is no complete/short/over marking. Added lines are tagged "Added".
 - − is disabled at 0. Counts never go below 0.
 - A **+ Add item** button opens a modal listing catalogue items not already in this stocktake, grouped by
   category, with a search box. Tapping one adds it at count 0 and closes the modal.
@@ -68,8 +67,8 @@ Unknown slugs show "Team not found" with a link home.
   the page shows "Offline — will sync" and retries every few seconds and when the browser comes back online.
 - The page re-reads the stocktake when it regains focus and nothing is queued, to pick up other people's counts.
 - Adding and removing lines need a connection; failures show an error and change nothing.
-- A stocktake's expected quantities are copied from the spec when it is created, so later Kit Spec changes
-  do not rewrite earlier stocktakes.
+- A stocktake's lines (and their Kit Spec quantities, kept in `expected` but not displayed) are copied from
+  the spec when it is created, so later Kit Spec changes do not rewrite earlier stocktakes.
 
 ## 5. API (`/api`)
 
@@ -102,6 +101,6 @@ environment, no cron, no admin. Mascot and brand images are copied from game day
 
 ## 8. Tests
 
-- Vitest (Workers runtime): data integrity of `gear-data.json` (exclusions, every team has a spec), line status,
+- Vitest (Workers runtime): data integrity of `gear-data.json` (exclusions, every team has a spec), the summary total,
   NZ dates, and every API route including concurrent adjusts, the floor at 0 and same-day reopen.
 - Playwright: home → team → count up/down → add a line → remove it → new stocktake reopens today's → pool.

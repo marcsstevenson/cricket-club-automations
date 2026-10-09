@@ -136,7 +136,6 @@
           <div class="line-text">
             <span class="line-name">{l.name}</span>
             {#if l.added}<span class="tag">Added</span>{/if}
-            {#if l.expected && l.count === l.expected}<span class="done" aria-label="Matches the Kit Spec">✓</span>{/if}
           </div>
           <div class="stepper">
             {#if l.added && l.count === 0 && !queue.pendingFor(stocktake.id, l.itemId)}
@@ -144,7 +143,7 @@
             {:else}
               <button type="button" class="step" aria-label="One less {l.name}" disabled={l.count === 0} onclick={() => tap(l, -1)}>−</button>
             {/if}
-            <span class="qty"><strong>{l.count}</strong>{#if l.expected}<span class="of">&nbsp;/&nbsp;{l.expected}</span>{/if}</span>
+            <span class="qty"><strong>{l.count}</strong></span>
             <button type="button" class="step" aria-label="One more {l.name}" onclick={() => tap(l, 1)}>+</button>
           </div>
         </li>

@@ -43,16 +43,14 @@ select, input[type='search'] {
 .line:first-child { border-top: 0; }
 .line-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
 .line-name { font-weight: 600; }
-.done { color: var(--pcc-teal-600); font-weight: 800; }
 .tag { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pcc-blue-700); }
 .stepper { display: flex; align-items: center; gap: 6px; }
 .step { width: 44px; height: 44px; border: 2px solid var(--pcc-navy-700); border-radius: 50%; background: #fff; color: var(--pcc-navy-700); font: 700 1.4rem/1 var(--font-head); cursor: pointer; touch-action: manipulation; }
 .step:active { background: var(--pcc-teal-400); }
 .step[disabled] { opacity: 0.35; cursor: default; }
 .step.remove { border-color: var(--pcc-error); color: var(--pcc-error); font-size: 1rem; }
-.qty { min-width: 4.2em; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.qty { min-width: 2.4em; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .qty strong { font: 800 1.3rem var(--font-head); }
-.qty .of { color: var(--pcc-grey-600); }
 .add-row { margin: 20px 0; }
 
 .icon-btn { background: none; border: 1px solid transparent; border-radius: var(--radius); padding: 2px 6px; font-size: 1.1rem; line-height: 1; cursor: pointer; color: var(--pcc-navy-700); }
