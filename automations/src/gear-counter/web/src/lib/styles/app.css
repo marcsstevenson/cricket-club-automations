@@ -43,10 +43,7 @@ select, input[type='search'] {
 .line:first-child { border-top: 0; }
 .line-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
 .line-name { font-weight: 600; }
-.status { font-size: 0.8rem; font-weight: 600; padding: 1px 6px; border-radius: var(--radius); }
-.line.ok .status { background: #d9f2ef; }
-.line.short .status { background: #fbe4e2; color: var(--pcc-error); }
-.line.over .status { background: #fff4d6; }
+.done { color: var(--pcc-teal-600); font-weight: 800; }
 .tag { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pcc-blue-700); }
 .stepper { display: flex; align-items: center; gap: 6px; }
 .step { width: 44px; height: 44px; border: 2px solid var(--pcc-navy-700); border-radius: 50%; background: #fff; color: var(--pcc-navy-700); font: 700 1.4rem/1 var(--font-head); cursor: pointer; touch-action: manipulation; }

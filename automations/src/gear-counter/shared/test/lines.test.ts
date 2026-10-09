@@ -1,17 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dateLabel, nzDate } from '../src/dates';
-import { lineStatus, progressText, statusText } from '../src/lines';
-
-describe('lineStatus', () => {
-  it.each([
-    [2, 2, '✓'],
-    [0, 1, 'short 1'],
-    [6, 5, '+1 over'],
-    [3, 0, ''],
-  ])('%i of %i → %s', (count, expected, text) => {
-    expect(statusText(lineStatus(count, expected))).toBe(text);
-  });
-});
+import { progressText } from '../src/lines';
 
 describe('progressText', () => {
   it('counts complete lines and missing items', () => {

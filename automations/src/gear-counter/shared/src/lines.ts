@@ -1,16 +1,5 @@
 import type { Line } from './types';
 
-export type LineStatus = { kind: 'none' } | { kind: 'ok' } | { kind: 'short'; by: number } | { kind: 'over'; by: number };
-
-/** Lines with nothing expected (pool and added lines) have no status. */
-export function lineStatus(count: number, expected: number): LineStatus {
-  if (expected === 0) return { kind: 'none' };
-  if (count === expected) return { kind: 'ok' };
-  return count < expected ? { kind: 'short', by: expected - count } : { kind: 'over', by: count - expected };
-}
-
-export const statusText = (s: LineStatus) => (s.kind === 'ok' ? '✓' : s.kind === 'short' ? `short ${s.by}` : s.kind === 'over' ? `+${s.by} over` : '');
-
 export function progress(lines: Pick<Line, 'count' | 'expected'>[]) {
   const spec = lines.filter((l) => l.expected > 0);
   return {

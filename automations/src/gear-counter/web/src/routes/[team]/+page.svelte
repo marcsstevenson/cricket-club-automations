@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { items } from '$shared/data';
-  import { lineStatus, progressText, statusText } from '$shared/lines';
+  import { progressText } from '$shared/lines';
   import type { Line, Stocktake } from '$shared/types';
   import AddItem from '$lib/AddItem.svelte';
   import { api } from '$lib/api';
@@ -109,7 +109,7 @@
   <Mascot name={team.mascot} />
   <div>
     <h1>{team.name}</h1>
-    <p class="team-meta">{#if team.grade}<Dot colour={team.dot} size="lg" />{team.grade} · {team.dot ? `${team.dot} dot` : 'no dot colour yet'}{:else}Spare gear in storage{/if}</p>
+    <p class="team-meta">{#if team.grade}<Dot colour={team.dot} size="lg" />{team.grade}{:else}Spare gear in storage{/if}</p>
   </div>
 </section>
 
@@ -132,12 +132,11 @@
     <h2>{g.category}</h2>
     <ul class="lines">
       {#each g.lines as l (l.itemId)}
-        {@const status = lineStatus(l.count, l.expected)}
-        <li class="line {status.kind}" data-item={l.itemId}>
+        <li class="line" data-item={l.itemId}>
           <div class="line-text">
             <span class="line-name">{l.name}</span>
             {#if l.added}<span class="tag">Added</span>{/if}
-            {#if status.kind !== 'none'}<span class="status">{statusText(status)}</span>{/if}
+            {#if l.expected && l.count === l.expected}<span class="done" aria-label="Matches the Kit Spec">✓</span>{/if}
           </div>
           <div class="stepper">
             {#if l.added && l.count === 0 && !queue.pendingFor(stocktake.id, l.itemId)}

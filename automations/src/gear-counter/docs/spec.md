@@ -43,14 +43,14 @@ Hero "Gear counter", then a grid of team cards (mascot, name, dot, grade) in the
 Club pool card last.
 
 ### Team `/:slug`
-- Header band: mascot, team name, dot colour and grade.
+- Header band: mascot, team name, and the grade with its dot (no colour name).
 - **Stocktake** dropdown: the team's stocktakes, named by NZ date (e.g. "9 Oct 2026"), newest first, with
   **New (today)** as the last option. Opening the page selects the newest; if the team has none, today's is created.
   Choosing New creates today's stocktake, or reopens it if one is already dated today (at most one per team per day).
-- A summary line: "12 of 20 lines complete · 5 short".
-- Lines grouped by category in catalogue order. Each line: name, `[−] count / expected [+]`, and a badge:
-  ✓ when count = expected, "short N" when below, "+N over" when above. Lines with expected 0 (pool lines and
-  added lines) show the count only, without "/ expected" or badge; added lines are tagged "Added".
+- A summary line: "12 of 20 lines complete · 5 items short".
+- Lines grouped by category in catalogue order. Each line: name, `[−] count / expected [+]`, and a ✓ when
+  count = expected. There are no "short" or "over" labels on lines. Lines with expected 0 (pool lines and
+  added lines) show the count only, without "/ expected"; added lines are tagged "Added".
 - − is disabled at 0. Counts never go below 0.
 - A **+ Add item** button opens a modal listing catalogue items not already in this stocktake, grouped by
   category, with a search box. Tapping one adds it at count 0 and closes the modal.

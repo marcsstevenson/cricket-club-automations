@@ -13,6 +13,8 @@ test('home lists the teams and the club pool', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Club pool/ })).toBeVisible();
   await page.getByRole('link', { name: /Parklands Penguins/ }).click();
   await expect(page.getByRole('heading', { name: 'Parklands Penguins' })).toBeVisible();
+  await expect(page.locator('.team-band .team-meta')).toHaveText('Kiwi Year 1');
+  await expect(page.locator('.team-band').getByRole('img', { name: 'yellow dot' })).toBeVisible();
 });
 
 test('a team starts with its Kit Spec at 0 and counts with + and −', async ({ page }) => {
@@ -23,14 +25,16 @@ test('a team starts with its Kit Spec at 0 and counts with + and −', async ({ 
 
   const bases = line(page, 'Black rubber bases');
   await expect(bases.getByRole('button', { name: 'One less Black rubber bases' })).toBeDisabled();
-  await expect(bases).toContainText('short 1');
+  await expect(bases.locator('.done')).toHaveCount(0);
+  await expect(page.getByText(/short \d|\+\d+ over/)).toHaveCount(0);
   await bases.getByRole('button', { name: 'One more Black rubber bases' }).click();
   await expect(bases.locator('.qty')).toHaveText('1 / 1');
-  await expect(bases).toContainText('✓');
+  await expect(bases.locator('.done')).toHaveText('✓');
 
   const tees = line(page, 'Yellow batting tee');
   for (let i = 0; i < 6; i++) await tees.getByRole('button', { name: 'One more Yellow batting tee' }).click();
-  await expect(tees).toContainText('+1 over');
+  await expect(tees.locator('.qty')).toHaveText('6 / 5');
+  await expect(tees.locator('.done')).toHaveCount(0);
   await tees.getByRole('button', { name: 'One less Yellow batting tee' }).click();
   await expect(tees.locator('.qty')).toHaveText('5 / 5');
   await expect(page.getByText('All changes saved')).toBeVisible();
