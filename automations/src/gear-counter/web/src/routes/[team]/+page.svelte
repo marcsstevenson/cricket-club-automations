@@ -14,7 +14,6 @@
 
   let { data }: PageProps = $props();
 
-  const ORDER = $derived(new Map(data.catalogue.items.map((i, n) => [i.id, n])));
   const team = $derived(data.page.team);
   let levels = $derived<LevelLine[]>(data.page.levels);
   let recent = $derived(data.page.recent);
@@ -84,7 +83,14 @@
     message = '';
     try {
       const line = await api().list(team.slug, itemId, me.name);
-      levels = [...levels.filter((l) => l.itemId !== itemId), line].sort((a, b) => (ORDER.get(a.itemId) ?? Infinity) - (ORDER.get(b.itemId) ?? Infinity));
+      // Re-read the page so every line (retired ones included) keeps the server's catalogue order.
+      try {
+        const fresh = await api().team(team.slug);
+        levels = fresh.levels;
+        recent = fresh.recent;
+      } catch {
+        levels = [...levels.filter((l) => l.itemId !== itemId), line];
+      }
       return true;
     } catch (e) {
       message = e instanceof Error ? e.message : 'Could not add that item.';

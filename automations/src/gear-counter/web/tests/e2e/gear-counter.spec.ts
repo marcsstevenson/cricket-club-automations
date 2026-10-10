@@ -210,6 +210,41 @@ test('admin edits the catalogue and teams follow', async ({ page }) => {
   expect(readFileSync(await (await club).path(), 'utf8')).not.toContain('Rebound net');
 });
 
+test('typed Kit Spec quantities survive other edits on the Items page', async ({ page }) => {
+  await page.goto('/admin');
+  await page.getByLabel('Admin passcode').fill('e2e-passcode');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.goto('/admin/items');
+  const year4 = await page.locator('#spec-pick option', { hasText: /^Year 4 \(/ }).getAttribute('value');
+  await page.locator('#spec-pick').selectOption(year4!);
+  await page.getByLabel('Tall cones', { exact: true }).fill('9');
+  const addCategory = page.getByRole('form', { name: 'Add a category' });
+  await addCategory.getByLabel('Add a category').fill('Spares');
+  await addCategory.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('status')).toHaveText('Added Spares.');
+  await expect(page.getByLabel('Tall cones', { exact: true })).toHaveValue('9');
+});
+
+test('a held retired item keeps its place when another item is added', async ({ page }) => {
+  await named(page, '/penguins');
+  const bases = line(page, 'Black rubber bases');
+  await bases.getByRole('button', { name: 'One more Black rubber bases' }).click();
+  await expect(page.getByText('All changes saved')).toBeVisible();
+  const headers = { 'x-admin-passcode': 'e2e-passcode', 'content-type': 'application/json' };
+  await page.request.patch('/api/admin/items/STU-03', { headers, data: { retired: true } });
+  await page.reload();
+  await expect(bases).toContainText('Retired');
+  await page.getByRole('button', { name: '+ Add item' }).click();
+  const add = page.getByRole('dialog', { name: 'Add an item' });
+  await add.getByLabel('Search').fill('Snapback');
+  await add.getByRole('button', { name: 'Snapback stumps' }).click();
+  await expect(line(page, 'Snapback stumps')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Stumps & Wickets' })).toHaveCount(1);
+  const names = await page.locator('li.line .line-name').allTextContents();
+  expect(names.indexOf('Black rubber bases')).toBeLessThan(names.indexOf('Snapback stumps')); // catalogue order kept
+  await page.request.patch('/api/admin/items/STU-03', { headers, data: { retired: false } });
+});
+
 test('an unknown team shows Team not found', async ({ page }) => {
   await page.goto('/pumaz');
   await expect(page.getByRole('heading', { name: 'Team not found' })).toBeVisible();

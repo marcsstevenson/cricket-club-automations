@@ -40,13 +40,15 @@
     cat = r.data;
     if (!cat.specs.some((s) => s.id === specId)) specId = cat.specs[0]?.id ?? 0;
     if (!newItemCategory) newItemCategory = cat.categories[0]?.id ?? 0;
-    resetGrid();
+    syncGrid(false);
   }
 
-  function resetGrid() {
+  /** Fills the Kit Spec grid; keeps what has been typed unless `reset` (new grade, or after saving it). */
+  function syncGrid(reset: boolean) {
     const column = cat?.specs.find((s) => s.id === specId)?.qty ?? {};
-    qty = Object.fromEntries(live.map((i) => [i.id, column[i.id] ?? null]));
+    qty = Object.fromEntries(live.map((i) => [i.id, !reset && i.id in qty ? qty[i.id] : (column[i.id] ?? null)]));
   }
+  const resetGrid = () => syncGrid(true);
 
   $effect(() => {
     if (admin.passcode) void load();
@@ -76,7 +78,7 @@
 
   async function saveGrid() {
     const body = Object.fromEntries(Object.entries(qty).map(([id, n]) => [id, n ?? 0]));
-    await run('PUT', `/kit-specs/${specId}/items`, body, `Saved the ${spec?.name} Kit Spec.`);
+    if (await run('PUT', `/kit-specs/${specId}/items`, body, `Saved the ${spec?.name} Kit Spec.`)) resetGrid();
   }
 </script>
 

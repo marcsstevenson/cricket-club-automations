@@ -190,3 +190,28 @@ describe('kit specs', () => {
     expect((await err(res)).error).toBe('item_retired');
   });
 });
+
+describe('review fixes', () => {
+  it('keeps retired items’ quantities when a column is saved', async () => {
+    const api = client();
+    const kiwi = await specId(api, 'Kiwi Y1');
+    await admin(api, '/items/STU-03', 'PATCH', { retired: true });
+    const live = (await cat(api)).specs.find((s) => s.id === kiwi)!.qty;
+    delete live['STU-03']; // the grid never sends retired items
+    expect((await admin(api, `/kit-specs/${kiwi}/items`, 'PUT', live)).status).toBe(200);
+    await admin(api, '/items/STU-03', 'PATCH', { retired: false });
+    expect((await cat(api)).specs.find((s) => s.id === kiwi)!.qty['STU-03']).toBe(1);
+  });
+
+  it('CSVs list new items without anyone opening the team page first', async () => {
+    const api = client();
+    const { id } = (await (await admin(api, '/items', 'POST', { name: 'Rebound net', categoryId: await catId(api, 'Fielding') })).json()) as { id: string };
+    await admin(api, `/kit-specs/${await specId(api, 'Kiwi Y1')}/items`, 'PUT', { ...(await cat(api)).specs.find((s) => s.name === 'Kiwi Y1')!.qty, [id]: 2 });
+    const rows = (await (await admin(api, '/export/club.csv')).text()).split('\r\n');
+    const header = rows[0].replace(/^﻿/, '').split(',');
+    const net = rows.find((r) => r.startsWith('Fielding,Rebound net,'))!.split(',');
+    expect(net[header.indexOf('Club pool')]).toBe('0');
+    expect(net[header.indexOf('Parklands Penguins')]).toBe('0');
+    expect(await (await admin(api, '/export/teams/lions.csv')).text()).toContain('Fielding,Rebound net,0,2,Kit Spec');
+  });
+});

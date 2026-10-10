@@ -169,7 +169,7 @@ newest 50 log entries `{ id, at, who, itemId, itemName, kind, change, levelAfter
 `from`/`to` are `{ slug, name }` or null.
 
 Admin routes need header `x-admin-passcode` matching the `ADMIN_PASSCODE` Worker secret (constant-time compare): 401
-when wrong or missing, 503 when unset. Rate limited per IP (30 per minute) before the passcode check;
+when wrong or missing, 503 when unset. Rate limited per IP (120 per minute, enough for reordering items) before the passcode check;
 `cache-control: no-store`.
 
 | Method | Path | Result |

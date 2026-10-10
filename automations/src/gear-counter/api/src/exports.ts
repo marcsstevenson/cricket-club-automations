@@ -2,12 +2,15 @@ import { nzDate, nzDateTime } from '../../shared/src/dates';
 import type { LogEntry } from '../../shared/src/types';
 import { loadCatalogue } from './catalogue';
 import { toCsv, type Cell } from './csv';
-import { LOG_SELECT, teamLevels, toEntry } from './levels';
+import { ensureListed, LOG_SELECT, teamLevels, toEntry } from './levels';
 import { listTeams, type TeamRow } from './teams';
 
 /** One row per catalogue item, a column per team/pool (hidden ones marked), current levels. */
 export async function clubCsv(db: D1Database): Promise<string> {
   const [teams, cat] = await Promise.all([listTeams(db, true), loadCatalogue(db)]);
+  // New items / Kit Spec quantities reach every team and pool here too (spec §3.7).
+  const now = new Date();
+  for (const t of teams) await ensureListed(db, t, cat, now);
   const [levels, last] = await db.batch([
     db.prepare('SELECT team_slug, item_id, level FROM levels'),
     db.prepare('SELECT team_slug, MAX(at) AS at FROM log GROUP BY team_slug'),
@@ -29,7 +32,9 @@ export async function clubCsv(db: D1Database): Promise<string> {
 }
 
 export async function levelsCsv(db: D1Database, team: TeamRow): Promise<string> {
-  const lines = await teamLevels(db, team, await loadCatalogue(db));
+  const cat = await loadCatalogue(db);
+  await ensureListed(db, team, cat, new Date());
+  const lines = await teamLevels(db, team, cat);
   return toCsv([
     ['Category', 'Item', 'Level', 'Kit Spec', 'Listed'],
     ...lines.map((l) => [l.category, l.name, l.level, l.kitSpec || null, l.added ? 'Added' : 'Kit Spec']),

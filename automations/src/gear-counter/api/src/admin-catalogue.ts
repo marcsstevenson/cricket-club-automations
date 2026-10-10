@@ -242,7 +242,8 @@ export function registerCatalogueAdmin(app: Hono<AppEnv>, requireAdmin: (c: Ctx)
       if (q > 0) rows.push([itemId, q]);
     }
     await db.batch([
-      db.prepare('DELETE FROM kit_spec_items WHERE spec_id = ?').bind(id),
+      // Retired items aren't in the grid, so their quantities are kept for if they're unretired.
+      db.prepare('DELETE FROM kit_spec_items WHERE spec_id = ? AND item_id NOT IN (SELECT id FROM items WHERE retired = 1)').bind(id),
       ...rows.map(([itemId, q]) => db.prepare('INSERT INTO kit_spec_items (spec_id, item_id, qty) VALUES (?, ?, ?)').bind(id, itemId, q)),
     ]);
     return c.json({ qty: Object.fromEntries(rows) });
