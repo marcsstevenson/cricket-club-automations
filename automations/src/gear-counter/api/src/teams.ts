@@ -1,5 +1,6 @@
-import { DOT_COLOURS, MASCOTS, specColumns, specLines } from '../../shared/src/data';
+import { DOT_COLOURS, MASCOTS } from '../../shared/src/data';
 import type { AdminTeam, NewTeam, TeamKind, TeamSummary } from '../../shared/src/types';
+import type { Cat } from './catalogue';
 import { ApiError } from './errors';
 
 export interface TeamRow {
@@ -59,7 +60,7 @@ const bad = (message: string) => new ApiError(400, 'invalid_team', message);
 const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
 /** Checks an add-team request and fills in defaults. */
-export function parseNewTeam(body: unknown): Required<NewTeam> {
+export function parseNewTeam(body: unknown, specNames: string[]): Required<NewTeam> {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
   const kind = b.kind;
   if (kind !== 'team' && kind !== 'pool') throw bad('Choose a team or a pool.');
@@ -73,15 +74,16 @@ export function parseNewTeam(body: unknown): Required<NewTeam> {
   if (mascot && !MASCOTS.includes(mascot)) throw bad('Unknown mascot.');
   if (kind === 'pool') return { kind, name, slug, spec: null, grade: null, dot: null, mascot };
   const spec = text(b.spec);
-  if (!specColumns.includes(spec)) throw bad('Choose a Kit Spec column.');
-  const grade = text(b.grade) || spec;
+  const column = specNames.find((n) => n.toLowerCase() === spec.toLowerCase());
+  if (!column) throw bad('Choose a Kit Spec column.');
+  const grade = text(b.grade) || column;
   if (grade.length > 40) throw bad('The grade must be up to 40 characters.');
   const dot = text(b.dot).toLowerCase() || null;
   if (dot && !DOT_COLOURS[dot]) throw bad('Unknown dot colour.');
-  return { kind, name, slug, spec, grade, dot, mascot };
+  return { kind, name, slug, spec: column, grade, dot, mascot };
 }
 
-export async function addTeam(db: D1Database, t: Required<NewTeam>, now: Date): Promise<AdminTeam> {
+export async function addTeam(db: D1Database, t: Required<NewTeam>, cat: Cat, now: Date): Promise<AdminTeam> {
   const clash = await db
     .prepare('SELECT slug, name FROM teams WHERE slug = ? OR name = ? COLLATE NOCASE')
     .bind(t.slug, t.name)
@@ -100,8 +102,8 @@ export async function addTeam(db: D1Database, t: Required<NewTeam>, now: Date): 
   // Its Kit Spec items (team) or every item (pool) are listed at 0.
   const at = now.toISOString();
   await db.batch(
-    specLines(t.spec).map(({ item }) =>
-      db.prepare('INSERT OR IGNORE INTO levels (team_slug, item_id, level, added, updated_at) VALUES (?, ?, 0, 0, ?)').bind(t.slug, item.id, at),
+    cat.pinnedIds(t).map((id) =>
+      db.prepare('INSERT OR IGNORE INTO levels (team_slug, item_id, level, added, updated_at) VALUES (?, ?, 0, 0, ?)').bind(t.slug, id, at),
     ),
   );
   return (await adminTeams(db)).find((x) => x.slug === t.slug)!;

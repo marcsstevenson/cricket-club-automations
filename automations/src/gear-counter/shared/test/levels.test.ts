@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { kitSpecQty } from '../src/data';
 import { dateLabel, nzDate, nzDateTime, whenLabel } from '../src/dates';
 import { levelsText } from '../src/levels';
 
@@ -8,15 +7,6 @@ describe('levelsText', () => {
     expect(levelsText(1, 'team')).toBe('1 item in this bag');
     expect(levelsText(68, 'team')).toBe('68 items in this bag');
     expect(levelsText(0, 'pool')).toBe('0 items in this pool');
-  });
-});
-
-describe('kitSpecQty', () => {
-  it('reads the Kit Spec column, 0 for pools and unknown items', () => {
-    expect(kitSpecQty('Kiwi Y1', 'STU-03')).toBe(1);
-    expect(kitSpecQty('Kiwi Y1', 'BAT-W2')).toBe(0);
-    expect(kitSpecQty(null, 'STU-03')).toBe(0);
-    expect(kitSpecQty('Nope', 'STU-03')).toBe(0);
   });
 });
 

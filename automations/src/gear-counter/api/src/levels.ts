@@ -1,47 +1,49 @@
-import { findItem, kitSpecQty, specLines } from '../../shared/src/data';
 import type { LevelLine, LogEntry, LogKind } from '../../shared/src/types';
+import type { Cat } from './catalogue';
 import { ApiError } from './errors';
 import type { TeamRow } from './teams';
 
 export const GROUP_MS = 2 * 60 * 1000;
 
-export function itemName(itemId: string): string {
-  const found = findItem(itemId);
+export function itemName(cat: Cat, itemId: string): string {
+  const found = cat.item(itemId);
   if (!found) throw new ApiError(404, 'item_not_found', 'Unknown item.');
-  return found.item.name;
+  return found.name;
 }
 
 const notListed = () => new ApiError(404, 'item_not_listed', 'That item is not listed here.');
 
 /**
- * Lists the team's Kit Spec items (every item for a pool) that have no row yet — e.g. after gear-data.json gains
- * items or Kit Spec quantities — so spec §2 "always listed" holds. One statement; a no-op when nothing is missing.
+ * Lists the items always listed for this team/pool (spec §2) that have no row yet — e.g. after the admin adds an item
+ * or a Kit Spec quantity. One statement; a no-op when nothing is missing.
  */
-export async function ensureListed(db: D1Database, team: TeamRow, now: Date): Promise<void> {
-  const ids = JSON.stringify(specLines(team.spec).map((l) => l.item.id));
+export async function ensureListed(db: D1Database, team: TeamRow, cat: Cat, now: Date): Promise<void> {
+  const ids = JSON.stringify(cat.pinnedIds(team));
   await db
     .prepare('INSERT OR IGNORE INTO levels (team_slug, item_id, level, added, updated_at) SELECT ?1, value, 0, 0, ?2 FROM json_each(?3)')
     .bind(team.slug, now.toISOString(), ids)
     .run();
 }
 
-export async function teamLevels(db: D1Database, team: TeamRow): Promise<LevelLine[]> {
+export async function teamLevels(db: D1Database, team: TeamRow, cat: Cat): Promise<LevelLine[]> {
   const { results } = await db
     .prepare('SELECT item_id, level, added FROM levels WHERE team_slug = ?')
     .bind(team.slug)
     .all<{ item_id: string; level: number; added: number }>();
   return results
     .map((r) => {
-      const found = findItem(r.item_id);
+      const found = cat.item(r.item_id);
       return {
-        sort: found?.sort ?? Infinity,
+        sort: cat.sortOf(r.item_id),
         line: {
           itemId: r.item_id,
-          name: found?.item.name ?? r.item_id,
-          category: found?.item.category ?? 'Other',
+          name: found?.name ?? r.item_id,
+          category: found?.category ?? 'Other',
           level: r.level,
-          kitSpec: kitSpecQty(team.spec, r.item_id),
+          kitSpec: cat.qty(team.spec, r.item_id),
           added: r.added === 1,
+          retired: found?.retired ?? true,
+          pinned: cat.isPinned(team, r.item_id),
         },
       };
     })
@@ -54,8 +56,10 @@ export async function teamLevels(db: D1Database, team: TeamRow): Promise<LevelLi
  * and the level changed together, so a retry or two devices tapping at once can't double-count or lose a change.
  * The change actually applied is MAX(-level, delta), so the floor at 0 is reflected in the log.
  */
-export async function adjust(db: D1Database, team: TeamRow, itemId: string, delta: number, who: string, now: Date): Promise<number> {
-  const name = itemName(itemId);
+export async function adjust(
+  db: D1Database, team: TeamRow, cat: Cat, itemId: string, delta: number, who: string, now: Date,
+): Promise<number> {
+  const name = itemName(cat, itemId);
   const at = now.toISOString();
   const cutoff = new Date(now.getTime() - GROUP_MS).toISOString();
   const level = '(SELECT level FROM levels WHERE team_slug = ?1 AND item_id = ?2)';
@@ -88,19 +92,21 @@ export async function adjust(db: D1Database, team: TeamRow, itemId: string, delt
   return row.level;
 }
 
-export async function listItem(db: D1Database, team: TeamRow, itemId: string, now: Date): Promise<LevelLine> {
-  itemName(itemId); // 404s unknown items
-  const added = team.kind === 'team' && !kitSpecQty(team.spec, itemId) ? 1 : 0;
+export async function listItem(db: D1Database, team: TeamRow, cat: Cat, itemId: string, now: Date): Promise<LevelLine> {
+  itemName(cat, itemId); // 404s unknown items
+  if (cat.item(itemId)!.retired) throw new ApiError(409, 'item_retired', 'That item has been retired.');
+  const added = cat.isPinned(team, itemId) ? 0 : 1;
   await db
     .prepare('INSERT OR IGNORE INTO levels (team_slug, item_id, level, added, updated_at) VALUES (?, ?, 0, ?, ?)')
     .bind(team.slug, itemId, added, now.toISOString())
     .run();
-  return (await teamLevels(db, team)).find((l) => l.itemId === itemId)!;
+  return (await teamLevels(db, team, cat)).find((l) => l.itemId === itemId)!;
 }
 
-export async function unlistItem(db: D1Database, team: TeamRow, itemId: string): Promise<void> {
-  if (team.kind === 'pool') throw new ApiError(409, 'cannot_unlist', 'Every item stays listed in a pool.');
-  if (kitSpecQty(team.spec, itemId)) throw new ApiError(409, 'cannot_unlist', 'Kit Spec items stay listed.');
+export async function unlistItem(db: D1Database, team: TeamRow, cat: Cat, itemId: string): Promise<void> {
+  if (cat.isPinned(team, itemId)) {
+    throw new ApiError(409, 'cannot_unlist', team.kind === 'pool' ? 'Every item stays listed in a pool.' : 'Kit Spec items stay listed.');
+  }
   const r = await db.prepare('DELETE FROM levels WHERE team_slug = ? AND item_id = ? AND level = 0').bind(team.slug, itemId).run();
   if (r.meta.changes) return;
   const row = await db.prepare('SELECT level FROM levels WHERE team_slug = ? AND item_id = ?').bind(team.slug, itemId).first();
@@ -110,9 +116,9 @@ export async function unlistItem(db: D1Database, team: TeamRow, itemId: string):
 
 /** Sets the level outright (last write wins) and logs old → new; nothing when unchanged. */
 export async function setCount(
-  db: D1Database, team: TeamRow, itemId: string, level: number, who: string, note: string | null, now: Date,
+  db: D1Database, team: TeamRow, cat: Cat, itemId: string, level: number, who: string, note: string | null, now: Date,
 ): Promise<number> {
-  const name = itemName(itemId);
+  const name = itemName(cat, itemId);
   const at = now.toISOString();
   const [, , after] = await db.batch<{ level: number }>([
     db
@@ -159,12 +165,12 @@ export async function recent(db: D1Database, slug: string, limit = 50): Promise<
 
 /** One D1 transaction (spec §4.2). The CHECK (level >= 0) rolls it back when the source is short or unlisted. */
 export async function move(
-  db: D1Database, from: TeamRow, to: TeamRow, itemId: string, qty: number, who: string, note: string | null, moveId: string, now: Date,
+  db: D1Database, from: TeamRow, to: TeamRow, cat: Cat, itemId: string, qty: number, who: string, note: string | null, moveId: string, now: Date,
 ): Promise<{ fromLevel: number; toLevel: number }> {
   if (from.slug === to.slug) throw new ApiError(400, 'same_team', 'Choose a different team or pool.');
-  const name = itemName(itemId);
+  const name = itemName(cat, itemId);
   const at = now.toISOString();
-  const toAdded = to.kind === 'team' && !kitSpecQty(to.spec, itemId) ? 1 : 0;
+  const toAdded = cat.isPinned(to, itemId) ? 0 : 1;
   try {
     await db.batch([
       // No source row: insert one at -1, which fails the CHECK and rolls everything back.

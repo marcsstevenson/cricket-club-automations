@@ -50,6 +50,30 @@ export interface LevelLine {
   kitSpec: number;
   /** Listed with + Add item (not in the team's Kit Spec). */
   added: boolean;
+  /** The item has been retired from the catalogue. */
+  retired: boolean;
+  /** Always listed here (Kit Spec item, or any item in a pool, not retired); otherwise removable at 0. */
+  pinned: boolean;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+}
+
+export interface CatalogueItem {
+  id: string;
+  name: string;
+  categoryId: number;
+  category: string;
+  retired: boolean;
+}
+
+/** GET /api/catalogue: categories and the items that can be added, in catalogue order; Kit Spec column names. */
+export interface Catalogue {
+  categories: Category[];
+  items: CatalogueItem[];
+  specs: string[];
 }
 
 export type LogKind = 'opening' | 'adjust' | 'move' | 'count';

@@ -1,6 +1,5 @@
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { items, specLines } from '../../shared/src/data';
 
 const db = env.MIGRATE_DB;
 const [init, teams, levels] = env.TEST_MIGRATIONS;
@@ -29,11 +28,11 @@ describe('0003_levels', () => {
     expect(await level('penguins', 'STU-03')).toEqual({ level: 2, added: 0 }); // latest, not the older 9
     expect(await level('penguins', 'BAT-W2')).toEqual({ level: 0, added: 1 });
     const penguins = await db.prepare("SELECT COUNT(*) AS n FROM levels WHERE team_slug = 'penguins'").first<{ n: number }>();
-    expect(penguins?.n).toBe(specLines('Kiwi Y1').length + 1);
+    expect(penguins?.n).toBe(14 + 1); // Kiwi Y1 Kit Spec + the added bat
     const pumas = await db.prepare("SELECT COUNT(*) AS n, SUM(level) AS total FROM levels WHERE team_slug = 'pumas'").first<{ n: number; total: number }>();
-    expect(pumas).toEqual({ n: specLines('Year 7').length, total: 0 }); // no stocktake
+    expect(pumas).toEqual({ n: 27, total: 0 }); // Year 7 Kit Spec; no stocktake
     const shed = await db.prepare("SELECT COUNT(*) AS n FROM levels WHERE team_slug = 'shed'").first<{ n: number }>();
-    expect(shed?.n).toBe(items.length);
+    expect(shed?.n).toBe(62);
     expect(await level('shed', 'FLD-TC')).toEqual({ level: 5, added: 0 });
 
     const { results } = await db.prepare('SELECT team_slug, item_id, kind, change, level_after, who, at FROM log ORDER BY id').all();

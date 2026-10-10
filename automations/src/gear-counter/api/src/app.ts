@@ -4,6 +4,7 @@ import * as v from 'valibot';
 import { nzDate } from '../../shared/src/dates';
 import type { TeamPage } from '../../shared/src/types';
 import { registerAdmin } from './admin';
+import { loadCatalogue, publicCatalogue } from './catalogue';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
 import { adjust, ensureListed, listItem, move, recent, setCount, teamLevels, unlistItem } from './levels';
@@ -42,12 +43,15 @@ export function createApp(deps: Deps) {
 
   app.get('/health', (c) => c.json({ ok: true }));
 
+  app.get('/catalogue', async (c) => c.json(publicCatalogue(await loadCatalogue(c.env.DB))));
+
   app.get('/teams', async (c) => c.json((await listTeams(c.env.DB)).map(summary)));
 
   app.get('/teams/:slug', async (c) => {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
-    await ensureListed(c.env.DB, t, deps.now());
-    const page: TeamPage = { team: summary(t), spec: t.spec, levels: await teamLevels(c.env.DB, t), recent: await recent(c.env.DB, t.slug) };
+    const cat = await loadCatalogue(c.env.DB);
+    await ensureListed(c.env.DB, t, cat, deps.now());
+    const page: TeamPage = { team: summary(t), spec: t.spec, levels: await teamLevels(c.env.DB, t, cat), recent: await recent(c.env.DB, t.slug) };
     return c.json(page);
   });
 
@@ -57,18 +61,18 @@ export function createApp(deps: Deps) {
     const parsed = v.safeParse(Adjust, b);
     if (!parsed.success) throw new ApiError(400, 'invalid_delta', 'delta must be a whole number from -20 to 20, not 0.');
     const who = parseWho(b.who);
-    return c.json({ level: await adjust(c.env.DB, t, item(c.req.param('item')), parsed.output.delta, who, deps.now()) });
+    return c.json({ level: await adjust(c.env.DB, t, await loadCatalogue(c.env.DB), item(c.req.param('item')), parsed.output.delta, who, deps.now()) });
   });
 
   app.put('/teams/:slug/items/:item', async (c) => {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
     parseWho((await body(c)).who);
-    return c.json(await listItem(c.env.DB, t, item(c.req.param('item')), deps.now()));
+    return c.json(await listItem(c.env.DB, t, await loadCatalogue(c.env.DB), item(c.req.param('item')), deps.now()));
   });
 
   app.delete('/teams/:slug/items/:item', async (c) => {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
-    await unlistItem(c.env.DB, t, item(c.req.param('item')));
+    await unlistItem(c.env.DB, t, await loadCatalogue(c.env.DB), item(c.req.param('item')));
     return c.body(null, 204);
   });
 
@@ -79,7 +83,8 @@ export function createApp(deps: Deps) {
     if (!parsed.success) throw new ApiError(400, 'invalid_level', 'level must be a whole number from 0 to 999.');
     const who = parseWho(b.who);
     const note = parseNote(b.note);
-    return c.json({ level: await setCount(c.env.DB, t, item(c.req.param('item')), parsed.output.level, who, note, deps.now()) });
+    const cat = await loadCatalogue(c.env.DB);
+    return c.json({ level: await setCount(c.env.DB, t, cat, item(c.req.param('item')), parsed.output.level, who, note, deps.now()) });
   });
 
   app.post('/moves', async (c) => {
@@ -89,7 +94,8 @@ export function createApp(deps: Deps) {
     const who = parseWho(b.who);
     const note = parseNote(b.note);
     const [from, to] = await Promise.all([getTeam(c.env.DB, parsed.output.from), getTeam(c.env.DB, parsed.output.to)]);
-    return c.json(await move(c.env.DB, from, to, item(parsed.output.item), parsed.output.qty, who, note, deps.id(), deps.now()));
+    const cat = await loadCatalogue(c.env.DB);
+    return c.json(await move(c.env.DB, from, to, cat, item(parsed.output.item), parsed.output.qty, who, note, deps.id(), deps.now()));
   });
 
   registerAdmin(app);

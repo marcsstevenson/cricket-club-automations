@@ -1,7 +1,6 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { specLines } from '../../shared/src/data';
-import type { LevelLine, TeamPage, TeamSummary } from '../../shared/src/types';
+import type { Catalogue, LevelLine, TeamPage, TeamSummary } from '../../shared/src/types';
 import { client, testDeps, type Client } from './helpers';
 
 const page = async (api: Client, slug: string) => (await (await api(`/teams/${slug}`)).json()) as TeamPage;
@@ -21,9 +20,12 @@ describe('teams', () => {
   it('shows a team its Kit Spec items in catalogue order with no changes yet', async () => {
     const p = await page(client(), 'penguins');
     expect(p.spec).toBe('Kiwi Y1');
-    expect(p.levels.map((l) => l.itemId)).toEqual(specLines('Kiwi Y1').map((l) => l.item.id));
+    const kit = await env.DB.prepare(
+      "SELECT s.item_id FROM kit_spec_items s JOIN kit_specs k ON k.id = s.spec_id JOIN items i ON i.id = s.item_id JOIN categories c ON c.id = i.category_id WHERE k.name = 'Kiwi Y1' ORDER BY c.sort, i.sort",
+    ).all<{ item_id: string }>();
+    expect(p.levels.map((l) => l.itemId)).toEqual(kit.results.map((r) => r.item_id));
     expect(p.levels.find((l) => l.itemId === 'STU-03')).toEqual({
-      itemId: 'STU-03', name: 'Black rubber bases', category: 'Stumps & Wickets', level: 0, kitSpec: 1, added: false,
+      itemId: 'STU-03', name: 'Black rubber bases', category: 'Stumps & Wickets', level: 0, kitSpec: 1, added: false, retired: false, pinned: true,
     } satisfies LevelLine);
     expect(p.recent).toEqual([]);
   });
@@ -130,7 +132,9 @@ describe('listing', () => {
   it('lists an added item at 0, idempotently, in catalogue order', async () => {
     const api = client();
     const res = await api('/teams/penguins/items/BAT-W2', { method: 'PUT', json: { who: 'Sam' } });
-    expect(await res.json()).toEqual({ itemId: 'BAT-W2', name: 'Wooden bat S2 (softball)', category: 'Bats', level: 0, kitSpec: 0, added: true });
+    expect(await res.json()).toEqual({
+      itemId: 'BAT-W2', name: 'Wooden bat S2 (softball)', category: 'Bats', level: 0, kitSpec: 0, added: true, retired: false, pinned: false,
+    });
     await api('/teams/penguins/items/BAT-W2', { method: 'PUT', json: { who: 'Sam' } });
     const ids = (await page(api, 'penguins')).levels.map((l) => l.itemId);
     expect(ids.filter((id) => id === 'BAT-W2')).toHaveLength(1);
@@ -208,5 +212,53 @@ describe('review fixes', () => {
     await env.DB.prepare("DELETE FROM levels WHERE team_slug = 'pool' AND item_id = 'FLD-TC'").run();
     expect((await page(api, 'penguins')).levels.map((l) => l.itemId)).toContain('STU-03');
     expect((await page(api, 'pool')).levels).toHaveLength(62);
+  });
+});
+
+describe('catalogue in D1', () => {
+  const sql = (q: string) => env.DB.prepare(q).run();
+  const line = async (api: Client, slug: string, item: string) => (await page(api, slug)).levels.find((l) => l.itemId === item);
+
+  it('serves the catalogue in order', async () => {
+    const cat = (await (await client()('/catalogue')).json()) as Catalogue;
+    expect(cat.categories).toHaveLength(11);
+    expect(cat.categories[0]).toMatchObject({ name: 'Stumps & Wickets' });
+    expect(cat.items).toHaveLength(62);
+    expect(cat.items[0]).toMatchObject({ id: 'STU-01', category: 'Stumps & Wickets', retired: false });
+    expect(cat.specs).toContain('Year 5');
+  });
+
+  it('keeps a retired item where it is held, unpinned, until removed at 0', async () => {
+    const api = client();
+    await adjust(api, 'penguins', 'STU-03', 2);
+    await sql("UPDATE items SET retired = 1 WHERE id = 'STU-03'");
+    expect(((await (await api('/catalogue')).json()) as Catalogue).items.some((i) => i.id === 'STU-03')).toBe(false);
+    expect(await line(api, 'penguins', 'STU-03')).toMatchObject({ level: 2, retired: true, pinned: false });
+    expect(await line(api, 'pool', 'STU-03')).toMatchObject({ level: 0, retired: true, pinned: false });
+    expect((await api('/teams/penguins/items/STU-03', { method: 'DELETE' })).status).toBe(409);
+    await adjust(api, 'penguins', 'STU-03', -2);
+    expect((await api('/teams/penguins/items/STU-03', { method: 'DELETE' })).status).toBe(204);
+    expect(await line(api, 'penguins', 'STU-03')).toBeUndefined(); // not listed again
+    const res = await api('/teams/penguins/items/STU-03', { method: 'PUT', json: { who: 'Sam' } });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: 'item_retired' });
+  });
+
+  it('keeps an item dropped from the Kit Spec where held, removable at 0', async () => {
+    const api = client();
+    await adjust(api, 'penguins', 'STU-03', 1);
+    await sql("DELETE FROM kit_spec_items WHERE item_id = 'STU-03' AND spec_id = (SELECT id FROM kit_specs WHERE name = 'Kiwi Y1')");
+    expect(await line(api, 'penguins', 'STU-03')).toMatchObject({ level: 1, kitSpec: 0, pinned: false, retired: false });
+    await adjust(api, 'penguins', 'STU-03', -1);
+    expect((await api('/teams/penguins/items/STU-03', { method: 'DELETE' })).status).toBe(204);
+  });
+
+  it('lists a new item in pools and in teams whose Kit Spec has it, on their next load', async () => {
+    const api = client();
+    await sql("INSERT INTO items (id, category_id, name, sort, retired, created_at) VALUES ('X-ABC123', 1, 'Practice stumps', 999, 0, 'x')");
+    await sql("INSERT INTO kit_spec_items (spec_id, item_id, qty) SELECT id, 'X-ABC123', 2 FROM kit_specs WHERE name = 'Kiwi Y1'");
+    expect(await line(api, 'pool', 'X-ABC123')).toMatchObject({ level: 0, pinned: true, name: 'Practice stumps' });
+    expect(await line(api, 'penguins', 'X-ABC123')).toMatchObject({ level: 0, kitSpec: 2, pinned: true });
+    expect(await line(api, 'pumas', 'X-ABC123')).toBeUndefined();
   });
 });

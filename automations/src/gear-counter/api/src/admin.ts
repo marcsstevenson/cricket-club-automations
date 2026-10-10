@@ -1,5 +1,6 @@
 import type { Context, Hono } from 'hono';
 import { nzDate } from '../../shared/src/dates';
+import { loadCatalogue } from './catalogue';
 import { csvResponse } from './csv';
 import type { AppEnv } from './env';
 import { ApiError } from './errors';
@@ -36,8 +37,9 @@ export function registerAdmin(app: Hono<AppEnv>) {
 
   app.post('/admin/teams', async (c) => {
     await requireAdmin(c);
-    const team = parseNewTeam(await c.req.json().catch(() => null));
-    return c.json(await addTeam(c.env.DB, team, c.get('deps').now()), 201);
+    const cat = await loadCatalogue(c.env.DB);
+    const team = parseNewTeam(await c.req.json().catch(() => null), cat.specNames);
+    return c.json(await addTeam(c.env.DB, team, cat, c.get('deps').now()), 201);
   });
 
   app.patch('/admin/teams/:slug', async (c) => {
