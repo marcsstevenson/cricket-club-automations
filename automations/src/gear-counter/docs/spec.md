@@ -55,8 +55,8 @@ visible teams in their sort order, then visible pools (Club pool first, then poo
 - An added line shows ✕ while its count is 0; tapping it removes the line. Kit Spec lines cannot be removed.
 
 ### Admin `/admin`
-Not linked from anywhere. Asks for the admin passcode; once accepted it is kept for that browser tab
-(`sessionStorage`). A later 401 forgets it and asks again.
+Not linked from anywhere. Asks for the admin passcode once; when accepted it is kept in that browser
+(`localStorage`) so later visits go straight in. A later 401 (e.g. after the passcode changes) forgets it and asks again.
 
 - **Downloads**: **Club inventory (CSV)**, and a **CSV** button on each team/pool row (disabled when it has no stocktake).
 - **Teams and pools** table: name, kind (team grade or "Pool"), latest stocktake date (or "None"), CSV button and

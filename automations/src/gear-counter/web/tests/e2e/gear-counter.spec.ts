@@ -144,7 +144,12 @@ test('admin adds a pool, downloads CSVs and hides it', async ({ page }) => {
   await line(page, 'Tall cones').getByRole('button', { name: 'One more Tall cones' }).click();
   await expect(page.getByText('All changes saved')).toBeVisible();
 
-  await page.goto('/admin'); // the passcode is remembered for this tab
+  // The passcode is remembered in this browser: a fresh tab goes straight in.
+  const tab = await page.context().newPage();
+  await tab.goto('/admin');
+  await expect(tab.locator('[data-team="garage-shed"]')).toBeVisible();
+  await tab.close();
+  await page.goto('/admin');
   const club = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Club inventory (CSV)' }).click();
   const clubCsv = readFileSync(await (await club).path(), 'utf8');

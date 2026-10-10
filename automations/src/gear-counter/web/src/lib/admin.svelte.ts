@@ -2,19 +2,19 @@ const KEY = 'pcc-gear-admin';
 
 function stored(): string {
   try {
-    return sessionStorage.getItem(KEY) ?? '';
+    return localStorage.getItem(KEY) ?? '';
   } catch {
     return ''; // storage blocked
   }
 }
 
-/** Admin passcode for this tab, kept once /api/admin/check accepts it.  */
+/** Admin passcode, kept in this browser (localStorage) once /api/admin/check accepts it; cleared on a 401. */
 export const admin = $state({ passcode: stored() });
 
 export function unlock(passcode: string) {
   admin.passcode = passcode;
   try {
-    sessionStorage.setItem(KEY, passcode);
+    localStorage.setItem(KEY, passcode);
   } catch {
     /* ignore */
   }
@@ -23,7 +23,7 @@ export function unlock(passcode: string) {
 export function lock() {
   admin.passcode = '';
   try {
-    sessionStorage.removeItem(KEY);
+    localStorage.removeItem(KEY);
   } catch {
     /* ignore */
   }
