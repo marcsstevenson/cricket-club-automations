@@ -20,7 +20,7 @@ a { color: var(--pcc-blue-700); }
 
 .card { background: var(--pcc-surface); border: 1px solid var(--pcc-grey-300); border-radius: var(--radius); padding: 16px; margin: 0 0 16px; }
 .field { display: block; margin: 0 0 4px; font-weight: 600; }
-select, input[type='search'], input[type='text'], input[type='password'] {
+select, input[type='search'], input[type='text'], input[type='password'], input[type='number'] {
   display: block; width: 100%; padding: 10px 12px; font: inherit; color: inherit;
   background: #fff; border: 1px solid var(--pcc-grey-600); border-radius: var(--radius);
 }
@@ -73,3 +73,12 @@ select, input[type='search'], input[type='text'], input[type='password'] {
 .small[disabled] { opacity: 0.35; cursor: default; }
 .add-form .field { margin-top: 10px; }
 .add-form h2 { margin-top: 0; }
+.btn.wide { width: 100%; }
+.step.more { border-color: var(--pcc-grey-300); font-size: 1.1rem; }
+.recent { margin: 28px 0 16px; }
+.log { list-style: none; margin: 0; padding: 0; background: var(--pcc-surface); border: 1px solid var(--pcc-grey-300); border-radius: var(--radius); }
+.log li { padding: 8px 12px; border-top: 1px solid var(--pcc-grey-300); font-size: 0.9rem; }
+.log li:first-child { border-top: 0; }
+.log-note { color: var(--pcc-grey-600); }
+.who-line { margin: 4px 0 0; color: #fff; font-size: 0.9rem; }
+.who-line button { background: none; border: 0; padding: 0; color: var(--pcc-teal-400); font: inherit; text-decoration: underline; cursor: pointer; }

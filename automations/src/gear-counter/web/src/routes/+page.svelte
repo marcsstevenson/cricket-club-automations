@@ -8,7 +8,7 @@
 
 <section class="hero">
   <h1>Gear counter</h1>
-  <p>Choose a team to count its kit bag against the Kit Spec.</p>
+  <p>Choose a team or pool to see and update its gear.</p>
 </section>
 
 <ul class="team-grid">
