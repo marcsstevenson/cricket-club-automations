@@ -20,17 +20,10 @@ npm run typecheck   # tsc + svelte-check
 npm run e2e         # Playwright against wrangler dev; wipes local .wrangler/state
 ```
 
-## Gear data
+## Catalogue
 
-The catalogue and the Kit Spec live in `shared/src/gear-data.json`, built from the gear workbook. After the
-workbook changes, rebuild it, check the diff, then deploy:
-
-```bash
-pip install openpyxl   # once
-python scripts/import_gear.py --workbook "C:\Users\marcs\Parklands Cricket Club Inc\PCC Committee - Documents\Gear\PCC Gear List 2026-27 Season - v7.xlsx"
-```
-
-Existing stocktakes keep the quantities they started with.
+Categories, items and the Kit Spec for each grade live in D1 and are edited at `/admin/items` (linked from `/admin`).
+They were seeded once from the gear workbook by `migrations/0004_catalogue.sql`; the workbook import is retired.
 
 ## Teams, pools and admin
 

@@ -163,6 +163,53 @@ test('a name containing | is recorded as typed', async ({ page }) => {
   await expect(page.locator('.log li').first()).toContainText('Sam|Jo ·');
 });
 
+test('admin edits the catalogue and teams follow', async ({ page }) => {
+  await page.goto('/admin');
+  await page.getByLabel('Admin passcode').fill('e2e-passcode');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('link', { name: /Edit items/ }).click();
+
+  const addCategory = page.getByRole('form', { name: 'Add a category' });
+  await addCategory.getByLabel('Add a category').fill('Training');
+  await addCategory.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('status')).toHaveText('Added Training.');
+
+  const addItem = page.getByRole('form', { name: 'Add an item' });
+  await addItem.getByLabel('Name').fill('Rebound net');
+  await addItem.getByLabel('Category').selectOption({ label: 'Training' });
+  await addItem.getByRole('button', { name: 'Add item' }).click();
+  await expect(page.getByRole('status')).toHaveText('Added Rebound net.');
+
+  const year3 = await page.locator('#spec-pick option', { hasText: /^Year 3 \(/ }).getAttribute('value');
+  await page.locator('#spec-pick').selectOption(year3!);
+  await page.getByLabel('Rebound net', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Save Year 3' }).click();
+  await expect(page.getByRole('status')).toHaveText('Saved the Year 3 Kit Spec.');
+
+  await named(page, '/tigers'); // Year 3
+  const net = line(page, 'Rebound net');
+  await expect(net.locator('.qty')).toHaveText('0');
+  await net.getByRole('button', { name: 'One more Rebound net' }).click();
+  await expect(page.getByText('All changes saved')).toBeVisible();
+
+  await page.goto('/admin/items');
+  await page.getByRole('button', { name: 'Retire Rebound net' }).click();
+  await expect(page.getByRole('status')).toHaveText('Rebound net is retired.');
+
+  await page.goto('/tigers');
+  await expect(net).toContainText('Retired');
+  await expect(net.locator('.qty')).toHaveText('1'); // still held, so still listed
+  await net.getByRole('button', { name: 'One less Rebound net' }).click();
+  await expect(page.getByText('All changes saved')).toBeVisible();
+  await net.getByRole('button', { name: 'Remove Rebound net' }).click();
+  await expect(net).toHaveCount(0);
+
+  await page.goto('/admin');
+  const club = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Club inventory (CSV)' }).click();
+  expect(readFileSync(await (await club).path(), 'utf8')).not.toContain('Rebound net');
+});
+
 test('an unknown team shows Team not found', async ({ page }) => {
   await page.goto('/pumaz');
   await expect(page.getByRole('heading', { name: 'Team not found' })).toBeVisible();
