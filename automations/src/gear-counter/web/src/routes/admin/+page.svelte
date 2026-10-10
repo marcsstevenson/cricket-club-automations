@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { dateLabel } from '$shared/dates';
+  import { dateLabel, nzDate } from '$shared/dates';
   import { DOT_COLOURS, MASCOTS, specColumns } from '$shared/data';
   import type { AdminTeam, NewTeam, TeamKind } from '$shared/types';
   import { admin, lock, unlock } from '$lib/admin.svelte';
@@ -120,8 +120,9 @@
 {:else}
   <div class="card">
     <h2>Downloads</h2>
-    <p class="note">Each team's latest stocktake.</p>
-    <button type="button" class="btn" onclick={() => download('/export/club.csv')}>Club inventory (CSV)</button>
+    <p class="note">Current levels, and every logged change.</p>
+    <p><button type="button" class="btn" onclick={() => download('/export/club.csv')}>Club inventory (CSV)</button></p>
+    <p><button type="button" class="btn" onclick={() => download('/export/log.csv')}>Full log (CSV)</button></p>
   </div>
 
   {#if notice}<p class="notice" role="status">{notice}</p>{/if}
@@ -135,11 +136,12 @@
           <span class="line-name">{t.name}</span>
           {#if t.hidden}<span class="tag">Hidden</span>{/if}
           <span class="team-meta">
-            {#if t.kind === 'team'}<Dot colour={t.dot} />{/if}{kindText(t)} · /{t.slug} · {t.latest ? `Latest ${dateLabel(t.latest)}` : 'No stocktake'}
+            {#if t.kind === 'team'}<Dot colour={t.dot} />{/if}{kindText(t)} · /{t.slug} · {t.lastChange ? `Last change ${dateLabel(nzDate(new Date(t.lastChange)))}` : 'No changes'}
           </span>
         </div>
         <div class="row-actions">
-          <button type="button" class="small" disabled={!t.latest} aria-label="Download {t.name} CSV" onclick={() => download(`/export/teams/${t.slug}.csv`)}>CSV</button>
+          <button type="button" class="small" aria-label="Download {t.name} levels CSV" onclick={() => download(`/export/teams/${t.slug}.csv`)}>Levels</button>
+          <button type="button" class="small" aria-label="Download {t.name} log CSV" disabled={!t.lastChange} onclick={() => download(`/export/log.csv?team=${t.slug}`)}>Log</button>
           <button type="button" class="small" onclick={() => setHidden(t, !t.hidden)}>{t.hidden ? 'Unhide' : 'Hide'}</button>
         </div>
       </li>
