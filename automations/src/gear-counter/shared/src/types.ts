@@ -103,3 +103,12 @@ export interface ApiErrorBody {
   error: string;
   message: string;
 }
+
+/** GET /api/admin/catalogue. */
+export interface AdminCatalogue {
+  categories: (Category & { items: number })[];
+  /** Catalogue order, retired included; holders = teams/pools holding some, total = club total. */
+  items: (CatalogueItem & { holders: number; total: number })[];
+  /** Kit Spec columns in order; qty maps item id to quantity; teams = how many teams use the column. */
+  specs: { id: number; name: string; teams: number; qty: Record<string, number> }[];
+}

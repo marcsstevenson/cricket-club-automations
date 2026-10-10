@@ -1,5 +1,6 @@
 import type { Context, Hono } from 'hono';
 import { nzDate } from '../../shared/src/dates';
+import { registerCatalogueAdmin } from './admin-catalogue';
 import { loadCatalogue } from './catalogue';
 import { csvResponse } from './csv';
 import type { AppEnv } from './env';
@@ -25,6 +26,8 @@ async function requireAdmin(c: Context<AppEnv>) {
 }
 
 export function registerAdmin(app: Hono<AppEnv>) {
+  registerCatalogueAdmin(app, requireAdmin);
+
   app.get('/admin/check', async (c) => {
     await requireAdmin(c);
     return c.json({ ok: true });
