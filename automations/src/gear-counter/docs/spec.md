@@ -18,19 +18,23 @@ pools, hides them, and downloads CSVs.
 ## 2. Data sources
 
 ### Catalogue and Kit Spec
-From `PCC Gear List 2026-27 Season - v7.xlsx` (Committee SharePoint → Gear), read by `scripts/import_gear.py` into
-`shared/src/gear-data.json`, which is committed (no personal data). Rerun the script when the workbook changes.
+Stored in D1 (§6) and edited on the admin Items page (§3.7). Migration `0004_catalogue.sql` seeded them from the
+gear workbook `PCC Gear List 2026-27 Season - v7.xlsx` (via the former `gear-data.json`): 62 items in 11 categories
+(excluding the workbook's **Senior kit**, **Misc** and **Other safety**) and 17 Kit Spec columns with their
+quantities. Since then the admin page is the only source; the workbook import is retired.
 
-| Data | Source |
-|---|---|
-| Catalogue | `Items` tab, excluding categories **Senior kit**, **Misc**, **Other safety** |
-| Kit Spec | `Kit Spec` tab, one column per grade; only quantities above 0; columns with no quantities are dropped |
+- **Categories** have a name and an order. **Items** have a name, a category, an order within it, and may be
+  **retired**. **Kit Spec columns** (one per grade, e.g. `Year 5`) give each item a quantity 0–99.
+- Catalogue order is category order, then item order within the category.
+- Item ids (e.g. `STU-03`) never change and are never shown; new items get a generated id (`X-` + 6 hex digits).
 
 ### Teams and pools
 D1 `teams` (§6), managed on the admin page; seeded with the 27 game-day teams and the **Club pool**.
 
-- A **team** has a Kit Spec column; its Kit Spec items are always listed.
-- A **pool** has no Kit Spec column; every catalogue item is listed.
+- A **team** has a Kit Spec column; its Kit Spec items (quantity > 0, not retired) are always listed.
+- A **pool** has no Kit Spec column; every item that is not retired is always listed.
+- Other items are listed while a team/pool holds them or after **+ Add item**; at level 0 they can be removed (✕).
+  A retired item, or one dropped from the team's Kit Spec, stays listed wherever it is held until it reaches 0.
 - A team with no dot colour shows a dashed empty dot; no mascot shows the ball.
 
 ## 3. Pages
@@ -51,9 +55,10 @@ teams in their sort order, then visible pools (Club pool first, then pools in th
 - Listed items grouped by category in catalogue order. Each line: name, `[−] level [+]`, and a **⋯** button with
   **Move…** and **Set count…**. Items listed with **+ Add item** are tagged "Added".
 - − is disabled at 0; levels never go below 0.
-- **+ Add item** opens a modal of catalogue items not listed here, grouped by category, with a search box; tapping one
+- **+ Add item** opens a modal of items (not retired) not listed here, grouped by category, with a search box; tapping one
   lists it at 0.
-- An added item (not in the team's Kit Spec) at level 0 with nothing queued shows ✕ instead of −; tapping it unlists it.
+- Items that are not always listed here (retired, dropped from the Kit Spec, or added) are tagged "Retired" or
+  "Added"; at level 0 with nothing queued they show ✕ instead of −, and tapping it unlists them.
 - **Move…** dialog: destination (any other visible team or pool), quantity (1 – current level), optional note.
   **Move** moves the gear: this level goes down, the destination's goes up, and the destination lists the item.
 - **Set count…** dialog: new level (0–999), optional note. **Save** sets the level outright.
@@ -82,10 +87,27 @@ go straight in. A 401 (e.g. after the passcode changes) forgets it and asks agai
 Slugs are 2–30 characters of `a-z`, `0-9` and `-`, start with a letter, are unique (hidden included) and are not
 `admin` or `api`. Names are 1–60 characters and unique ignoring case.
 
+### 3.7 Admin Items `/admin/items`
+Linked from `/admin` ("Edit items") and behind the same passcode.
+
+- **Categories**: list in order with **↑ / ↓**, **Rename**, **Delete** (only when it has no items), and **Add a
+  category** (added last).
+- **Items**, grouped by category in order: each row shows the name, where it is held ("3 teams · 12 in the club"),
+  **↑ / ↓** within its category, **Edit** (name, category — moving category puts it last there) and
+  **Retire** / **Unretire**. Retired items are shown greyed and tagged "Retired". **Add an item**: name and category
+  (added last in the category).
+- **Kit Spec**: choose a grade column; its items are listed by category with a quantity box each (0–99, blank = 0);
+  **Save** replaces that column's quantities. **Add a grade**, **Rename** (teams using it follow), and **Delete**
+  (only when no team uses it). Retired items are not shown in the grid.
+- Names: categories, items and grades are 1–60 characters after trimming and unique ignoring case within their kind.
+- Catalogue changes are not logged in the gear log. Teams pick up new Kit Spec items and pools pick up new items
+  (at 0) the next time their page or CSV is loaded.
+
 ### 3.5 CSV downloads
 UTF-8 with a BOM; values starting with `=`, `+`, `-`, `@`, tab or CR are prefixed with `'`; times are NZ local.
 
-- **Club inventory** `club-inventory-YYYY-MM-DD.csv` (today, NZ): one row per catalogue item in catalogue order.
+- **Club inventory** `club-inventory-YYYY-MM-DD.csv` (today, NZ): one row per item in catalogue order (retired items
+  only while someone holds them, marked "(retired)").
   Columns `Category`, `Item`, `Club total`, then one column per team/pool (teams, then pools; hidden included and
   marked "(hidden)"). Second row `Last change` with each team/pool's latest log date. A cell is the level, or blank
   when the item is not listed there.
@@ -122,8 +144,8 @@ Needs a connection. Sets the level outright (last write wins) and writes a `coun
 and `level after` = new, with the note. Setting the same level as now writes nothing.
 
 ### 4.4 Listing
-**+ Add item** lists an item at 0 (idempotent, no log entry). Unlisting needs level 0 and an item that is not in the
-team's Kit Spec (pools: never — every item is listed); otherwise 409. A move into a team lists the item there.
+**+ Add item** lists an item at 0 (idempotent, no log entry); retired items cannot be added (409). Unlisting needs
+level 0 and an item that is not always listed there (§2); otherwise 409. A move into a team lists the item there.
 
 ## 5. API (`/api`)
 
@@ -132,6 +154,7 @@ Writes are rate limited per IP (300 per minute).
 
 | Method | Path | Body | Result |
 |---|---|---|---|
+| GET | `/catalogue` | | `{ categories, items, specs }`: categories and items (not retired) in order, Kit Spec column names |
 | GET | `/teams` | | Visible team summaries (teams, then pools) |
 | GET | `/teams/:slug` | | `{ team, spec, levels, recent }`; 404 if hidden |
 | POST | `/teams/:slug/items/:item/adjust` | `{ delta, who }` (integer −20…20, not 0) | `{ level }` |
@@ -140,7 +163,7 @@ Writes are rate limited per IP (300 per minute).
 | POST | `/teams/:slug/items/:item/count` | `{ level, who, note? }` (0–999) | `{ level }` |
 | POST | `/moves` | `{ from, to, item, qty, who, note? }` (qty 1–999) | `{ fromLevel, toLevel }`; 409 if short |
 
-Notes are up to 200 characters. `levels` lines: `{ itemId, name, category, level, kitSpec, added }`. `recent`: the
+Notes are up to 200 characters. `levels` lines: `{ itemId, name, category, level, kitSpec, added, retired, pinned }` (`pinned` = always listed). `recent`: the
 newest 50 log entries `{ id, at, who, itemId, itemName, kind, change, levelAfter, from, to, note }`, where
 `from`/`to` are `{ slug, name }` or null.
 
@@ -157,11 +180,22 @@ when wrong or missing, 503 when unset. Rate limited per IP (30 per minute) befor
 | GET | `/admin/export/club.csv` | Club inventory |
 | GET | `/admin/export/teams/:slug.csv` | Levels CSV for one team |
 | GET | `/admin/export/log.csv?team=slug` | Log CSV (all, or one team) |
+| GET | `/admin/catalogue` | Categories, all items (retired included) with `holders` and `total`, Kit Spec columns with quantities and `teams` using each |
+| POST | `/admin/categories` | `{ name }` → category; PATCH `/admin/categories/:id` `{ name }`; DELETE (409 unless empty) |
+| POST | `/admin/categories/:id/move` | `{ direction: "up" or "down" }` |
+| POST | `/admin/items` | `{ name, categoryId }` → item; PATCH `/admin/items/:id` `{ name?, categoryId?, retired? }` |
+| POST | `/admin/items/:id/move` | `{ direction }` (within its category) |
+| POST | `/admin/kit-specs` | `{ name }` → column; PATCH `/admin/kit-specs/:id` `{ name }`; DELETE (409 if a team uses it) |
+| PUT | `/admin/kit-specs/:id/items` | `{ [itemId]: qty }` (0–99) replaces the column's quantities |
 
 ## 6. Storage (D1)
 
 ```sql
-teams(slug PK, name, kind 'team'|'pool', mascot, grade, spec, dot, sort, hidden 0|1, created_at)
+categories(id INTEGER PK, name UNIQUE NOCASE, sort)
+items(id TEXT PK, category_id → categories, name UNIQUE NOCASE, sort, retired 0|1, created_at)
+kit_specs(id INTEGER PK, name UNIQUE NOCASE, sort)
+kit_spec_items(spec_id → kit_specs, item_id → items, qty 1–99, PRIMARY KEY(spec_id, item_id))
+teams(slug PK, name, kind 'team'|'pool', mascot, grade, spec (kit_specs.name), dot, sort, hidden 0|1, created_at)
 levels(team_slug, item_id, level >= 0, added 0|1, updated_at, PRIMARY KEY(team_slug, item_id))
   -- a row exists exactly when the item is listed for that team/pool
 log(id INTEGER PK, at, updated_at, team_slug, item_id, item_name,
@@ -182,6 +216,10 @@ Taken after a full export of production (`wrangler d1 export`). For each team/po
 Kit Spec and catalogue rows for step 2 are generated into the migration from `gear-data.json` by
 `scripts/levels_migration.py` (helper tables `mig_kit_spec` and `mig_catalogue`, created and dropped within it).
 
+### Catalogue migration (`0004_catalogue.sql`)
+Generated once from `gear-data.json` by `scripts/catalogue_migration.py`; afterwards `gear-data.json`, `import_gear.py`
+and `levels_migration.py` are removed (a copy of `gear-data.json` stays as a test fixture to check the seed).
+
 ## 7. Deploy
 
 Worker `pcc-gear-counter` in the club Cloudflare account on its workers.dev URL. Secret `ADMIN_PASSCODE`. `npm run
@@ -190,7 +228,10 @@ sent after it (their routes are gone) and are dropped with an error.
 
 ## 8. Tests
 
-- Vitest (Workers runtime): `gear-data.json` integrity; seeded teams; adjust (atomic, concurrent, floor at 0, logs
+- Vitest (Workers runtime): the catalogue seed matches the old `gear-data.json` exactly; every catalogue admin route
+  (validation, uniqueness, ordering, delete only when empty/unused, rename follows teams, column save), retired and
+  dropped-from-Kit-Spec items staying while held and removable at 0, new items/Kit Spec items reaching pools/teams;
+  seeded teams; adjust (atomic, concurrent, floor at 0, logs
   the applied change); grouping (same name within 2 minutes merges, case-insensitive; different name, later than 2
   minutes, different item or a non-adjust entry in between start a new entry; a group netting to 0 is deleted);
   list/unlist rules; set count (logs old → new, no-op when equal); moves (atomic, 409 when short, same team refused,
