@@ -6,13 +6,20 @@ import type { TeamPage } from '../../shared/src/types';
 import { registerAdmin } from './admin';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
-import { adjust, listItem, recent, setCount, teamLevels, unlistItem } from './levels';
+import { adjust, listItem, move, recent, setCount, teamLevels, unlistItem } from './levels';
 import { getTeam, listTeams, summary } from './teams';
 import { parseNote, parseWho } from './who';
 
 const ITEM = /^[A-Z0-9-]{1,20}$/;
 const Adjust = v.object({ delta: v.pipe(v.number(), v.integer(), v.minValue(-20), v.maxValue(20), v.check((n) => n !== 0)) });
 const Count = v.object({ level: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(999)) });
+
+const Move = v.object({
+  from: v.string(),
+  to: v.string(),
+  item: v.string(),
+  qty: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(999)),
+});
 
 function item(id: string) {
   if (!ITEM.test(id)) throw new ApiError(404, 'item_not_found', 'Unknown item.');
@@ -72,6 +79,16 @@ export function createApp(deps: Deps) {
     const who = parseWho(b.who);
     const note = parseNote(b.note);
     return c.json({ level: await setCount(c.env.DB, t, item(c.req.param('item')), parsed.output.level, who, note, deps.now()) });
+  });
+
+  app.post('/moves', async (c) => {
+    const b = await body(c);
+    const parsed = v.safeParse(Move, b);
+    if (!parsed.success) throw new ApiError(400, 'invalid_move', 'Choose where to move it and a quantity from 1 to 999.');
+    const who = parseWho(b.who);
+    const note = parseNote(b.note);
+    const [from, to] = await Promise.all([getTeam(c.env.DB, parsed.output.from), getTeam(c.env.DB, parsed.output.to)]);
+    return c.json(await move(c.env.DB, from, to, item(parsed.output.item), parsed.output.qty, who, note, deps.id(), deps.now()));
   });
 
   registerAdmin(app);

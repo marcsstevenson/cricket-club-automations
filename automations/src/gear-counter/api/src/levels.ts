@@ -143,3 +143,49 @@ export async function recent(db: D1Database, slug: string, limit = 50): Promise<
   const { results } = await db.prepare(`${LOG_SELECT} WHERE l.team_slug = ? ORDER BY l.id DESC LIMIT ?`).bind(slug, limit).all<LogRow>();
   return results.map(toEntry);
 }
+
+/** One D1 transaction (spec §4.2). The CHECK (level >= 0) rolls it back when the source is short or unlisted. */
+export async function move(
+  db: D1Database, from: TeamRow, to: TeamRow, itemId: string, qty: number, who: string, note: string | null, moveId: string, now: Date,
+): Promise<{ fromLevel: number; toLevel: number }> {
+  if (from.slug === to.slug) throw new ApiError(400, 'same_team', 'Choose a different team or pool.');
+  const name = itemName(itemId);
+  const at = now.toISOString();
+  const toAdded = to.kind === 'team' && !kitSpecQty(to.spec, itemId) ? 1 : 0;
+  try {
+    await db.batch([
+      // No source row: insert one at -1, which fails the CHECK and rolls everything back.
+      db
+        .prepare('INSERT INTO levels (team_slug, item_id, level, added, updated_at) SELECT ?1, ?2, -1, 0, ?3 WHERE NOT EXISTS (SELECT 1 FROM levels WHERE team_slug = ?1 AND item_id = ?2)')
+        .bind(from.slug, itemId, at),
+      db.prepare('UPDATE levels SET level = level - ?3, updated_at = ?4 WHERE team_slug = ?1 AND item_id = ?2').bind(from.slug, itemId, qty, at),
+      db
+        .prepare(
+          `INSERT INTO levels (team_slug, item_id, level, added, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)
+           ON CONFLICT (team_slug, item_id) DO UPDATE SET level = level + excluded.level, updated_at = excluded.updated_at`,
+        )
+        .bind(to.slug, itemId, qty, toAdded, at),
+      db
+        .prepare(
+          `INSERT INTO log (at, updated_at, team_slug, item_id, item_name, kind, change, level_after, move_id, to_slug, note, who)
+           SELECT ?1, ?1, ?2, ?3, ?4, 'move', -?5, level, ?6, ?7, ?8, ?9 FROM levels WHERE team_slug = ?2 AND item_id = ?3`,
+        )
+        .bind(at, from.slug, itemId, name, qty, moveId, to.slug, note, who),
+      db
+        .prepare(
+          `INSERT INTO log (at, updated_at, team_slug, item_id, item_name, kind, change, level_after, move_id, from_slug, note, who)
+           SELECT ?1, ?1, ?2, ?3, ?4, 'move', ?5, level, ?6, ?7, ?8, ?9 FROM levels WHERE team_slug = ?2 AND item_id = ?3`,
+        )
+        .bind(at, to.slug, itemId, name, qty, moveId, from.slug, note, who),
+    ]);
+  } catch (e) {
+    if (!/CHECK constraint failed/i.test(String(e))) throw e;
+    const row = await db.prepare('SELECT level FROM levels WHERE team_slug = ? AND item_id = ?').bind(from.slug, itemId).first<{ level: number }>();
+    throw new ApiError(409, 'not_enough', `Only ${row?.level ?? 0} available.`);
+  }
+  const [a, b] = await db.batch<{ level: number }>([
+    db.prepare('SELECT level FROM levels WHERE team_slug = ? AND item_id = ?').bind(from.slug, itemId),
+    db.prepare('SELECT level FROM levels WHERE team_slug = ? AND item_id = ?').bind(to.slug, itemId),
+  ]);
+  return { fromLevel: a.results[0].level, toLevel: b.results[0].level };
+}
