@@ -1,5 +1,4 @@
 import raw from './gear-data.json';
-import type { TeamSummary } from './types';
 
 export interface Item {
   id: string;
@@ -7,43 +6,32 @@ export interface Item {
   name: string;
 }
 
-interface TeamDef extends TeamSummary {
-  /** Kit Spec column; null for the pool, whose spec is every item at 0. */
-  spec: string | null;
-}
-
 interface GearData {
   source: string;
   categories: string[];
   items: Item[];
   specs: Record<string, Record<string, number>>;
-  teams: TeamDef[];
 }
 
 const data = raw as GearData;
 
-export const POOL_SLUG = 'pool';
-const POOL: TeamDef = { slug: POOL_SLUG, name: 'Club pool', mascot: '', grade: null, dot: null, spec: null };
-
 export const categories = data.categories;
 export const items = data.items;
 const itemIndex = new Map(items.map((it, i) => [it.id, i]));
-const teams = [...data.teams, POOL];
 
 export const findItem = (id: string) => (itemIndex.has(id) ? { item: items[itemIndex.get(id)!], sort: itemIndex.get(id)! } : null);
 
-export function findTeam(slug: string): TeamDef | null {
-  return teams.find((t) => t.slug === slug.toLowerCase()) ?? null;
-}
+/** Kit Spec columns (one per grade), in workbook order. */
+export const specColumns = Object.keys(data.specs);
 
-export const summary = ({ slug, name, mascot, grade, dot }: TeamDef): TeamSummary => ({ slug, name, mascot, grade, dot });
-export const teamSummaries = (): TeamSummary[] => teams.map(summary);
-
-/** The lines a new stocktake starts with, in catalogue order. */
-export function specLines(team: TeamDef): { item: Item; sort: number; expected: number }[] {
-  if (team.spec === null) return items.map((item, sort) => ({ item, sort, expected: 0 }));
-  const spec = data.specs[team.spec] ?? {};
-  return items.flatMap((item, sort) => (spec[item.id] ? [{ item, sort, expected: spec[item.id] }] : []));
+/**
+ * The lines a new stocktake starts with, in catalogue order: the Kit Spec column's items, or every item at 0
+ * for a pool (spec null).
+ */
+export function specLines(spec: string | null): { item: Item; sort: number; expected: number }[] {
+  if (spec === null) return items.map((item, sort) => ({ item, sort, expected: 0 }));
+  const column = data.specs[spec] ?? {};
+  return items.flatMap((item, sort) => (column[item.id] ? [{ item, sort, expected: column[item.id] }] : []));
 }
 
 export const DOT_COLOURS: Record<string, string> = {
@@ -54,3 +42,10 @@ export const DOT_COLOURS: Record<string, string> = {
   orange: '#e8812a',
   red: '#d23b2f',
 };
+
+/** Images in web/static/mascots (each has a -sm variant). */
+export const MASCOTS = [
+  'bears', 'cheetahs', 'dolphins', 'dragons', 'foxes', 'gorillas', 'jackals', 'lemurs', 'leopards', 'lions', 'meerkats',
+  'monkeys', 'narwhals', 'orcas', 'pandas', 'panthers', 'pelicans', 'penguins', 'pumas', 'pythons', 'rhinos', 'seals',
+  'sharks', 'swans', 'tigers', 'unicorns', 'wolves', 'wombats',
+];

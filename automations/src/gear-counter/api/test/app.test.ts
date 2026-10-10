@@ -10,8 +10,10 @@ describe('teams', () => {
   it('lists the game-day teams with the pool last', async () => {
     const teams = (await (await client()('/teams')).json()) as TeamSummary[];
     expect(teams).toHaveLength(28);
-    expect(teams.at(-1)).toEqual({ slug: 'pool', name: 'Club pool', mascot: '', grade: null, dot: null });
-    expect(teams.find((t) => t.slug === 'pumas')).toMatchObject({ grade: 'Year 7', dot: 'green' });
+    expect(teams.at(-1)).toEqual({ slug: 'pool', name: 'Club pool', kind: 'pool', mascot: '', grade: null, dot: null });
+    expect(teams.find((t) => t.slug === 'pumas')).toMatchObject({ kind: 'team', grade: 'Year 7', dot: 'green' });
+    expect(teams.find((t) => t.slug === 'korimako')).toMatchObject({ name: 'ECSCC/Parklands Korimako', mascot: 'foxes', grade: 'Division 5', dot: null });
+    expect(teams.filter((t) => t.kind === 'team')).toHaveLength(27);
   });
 
   it('404s an unknown team', async () => {
@@ -28,6 +30,7 @@ describe('teams', () => {
     await open(api);
     const page = (await (await api('/teams/pumas')).json()) as TeamPage;
     expect(page.today).toBe('2026-10-09');
+    expect(page.spec).toBe('Year 7');
     expect(page.stocktakes.map((s) => s.label)).toEqual(['9 Oct 2026', '12 Sep 2026']);
   });
 });

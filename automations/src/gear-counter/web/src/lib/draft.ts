@@ -1,18 +1,15 @@
-import { findTeam, specLines } from '$shared/data';
+import { specLines } from '$shared/data';
 import { dateLabel } from '$shared/dates';
-import type { Stocktake } from '$shared/types';
+import type { Stocktake, TeamPage } from '$shared/types';
 import { draftId } from './sync.svelte';
 
 /** Today's stocktake as it would start, shown before anything is saved. */
-export function draftStocktake(teamSlug: string, today: string): Stocktake {
-  const team = findTeam(teamSlug);
+export function draftStocktake(page: TeamPage): Stocktake {
   return {
-    id: draftId(teamSlug),
-    date: today,
-    label: dateLabel(today),
-    teamSlug,
-    lines: team
-      ? specLines(team).map(({ item, expected }) => ({ itemId: item.id, name: item.name, category: item.category, expected, count: 0, added: false }))
-      : [],
+    id: draftId(page.team.slug),
+    date: page.today,
+    label: dateLabel(page.today),
+    teamSlug: page.team.slug,
+    lines: specLines(page.spec).map(({ item, expected }) => ({ itemId: item.id, name: item.name, category: item.category, expected, count: 0, added: false })),
   };
 }

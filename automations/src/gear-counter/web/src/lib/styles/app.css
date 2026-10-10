@@ -20,7 +20,7 @@ a { color: var(--pcc-blue-700); }
 
 .card { background: var(--pcc-surface); border: 1px solid var(--pcc-grey-300); border-radius: var(--radius); padding: 16px; margin: 0 0 16px; }
 .field { display: block; margin: 0 0 4px; font-weight: 600; }
-select, input[type='search'] {
+select, input[type='search'], input[type='text'], input[type='password'] {
   display: block; width: 100%; padding: 10px 12px; font: inherit; color: inherit;
   background: #fff; border: 1px solid var(--pcc-grey-600); border-radius: var(--radius);
 }
@@ -63,3 +63,13 @@ select, input[type='search'] {
 .pick-list { list-style: none; margin: 0; padding: 0; }
 .pick { display: block; width: 100%; text-align: left; padding: 10px 4px; font: inherit; background: none; border: 0; border-bottom: 1px solid var(--pcc-grey-300); cursor: pointer; color: inherit; }
 .pick:hover, .pick:focus-visible { background: var(--pcc-bg); }
+.notice { color: var(--pcc-teal-600); font-weight: 600; }
+
+.admin-list { margin-bottom: var(--gutter); }
+.admin-list .team-meta { justify-content: flex-start; flex-basis: 100%; }
+.hidden-row .line-name { color: var(--pcc-grey-600); }
+.row-actions { display: flex; gap: 6px; }
+.small { padding: 6px 12px; font: 700 0.85rem var(--font-head); text-transform: uppercase; border: 2px solid var(--pcc-navy-700); border-radius: var(--radius); background: #fff; color: var(--pcc-navy-700); cursor: pointer; }
+.small[disabled] { opacity: 0.35; cursor: default; }
+.add-form .field { margin-top: 10px; }
+.add-form h2 { margin-top: 0; }

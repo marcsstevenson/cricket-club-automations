@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 test.describe.configure({ mode: 'serial' });
@@ -119,6 +120,43 @@ test('the club pool lists every item with counts only', async ({ page }) => {
   await cones.getByRole('button', { name: 'One more Tall cones' }).click();
   await expect(cones.locator('.qty')).toHaveText('1');
   await expect(page.locator('.progress')).toHaveText('1 item counted');
+});
+
+test('admin adds a pool, downloads CSVs and hides it', async ({ page }) => {
+  await page.goto('/admin');
+  await page.getByLabel('Admin passcode').fill('wrong');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Wrong passcode — enter it again.');
+  await page.getByLabel('Admin passcode').fill('e2e-passcode');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('[data-team="pumas"]')).toContainText('Year 7');
+
+  const form = page.getByRole('form', { name: 'Add a pool' });
+  await form.getByLabel('Name').fill('Garage Shed');
+  await expect(form.getByLabel('Web address')).toHaveValue('garage-shed');
+  await form.getByRole('button', { name: 'Add pool' }).click();
+  await expect(page.getByRole('status')).toHaveText('Added Garage Shed at /garage-shed.');
+  await expect(page.locator('[data-team="garage-shed"]')).toContainText('No stocktake');
+
+  await page.goto('/');
+  await page.getByRole('link', { name: /Garage Shed/ }).click();
+  await expect(page.locator('li.line')).toHaveCount(62);
+  await line(page, 'Tall cones').getByRole('button', { name: 'One more Tall cones' }).click();
+  await expect(page.getByText('All changes saved')).toBeVisible();
+
+  await page.goto('/admin'); // the passcode is remembered for this tab
+  const club = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Club inventory (CSV)' }).click();
+  const clubCsv = readFileSync(await (await club).path(), 'utf8');
+  expect(clubCsv.split('\r\n')[0]).toContain('Garage Shed');
+  const shed = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download Garage Shed CSV' }).click();
+  expect((await shed).suggestedFilename()).toMatch(/^garage-shed-\d{4}-\d{2}-\d{2}\.csv$/);
+
+  await page.locator('[data-team="garage-shed"]').getByRole('button', { name: 'Hide' }).click();
+  await expect(page.locator('[data-team="garage-shed"]')).toContainText('Hidden');
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /Garage Shed/ })).toHaveCount(0);
 });
 
 test('an unknown team shows Team not found', async ({ page }) => {

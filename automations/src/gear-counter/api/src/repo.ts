@@ -3,7 +3,7 @@ import { dateLabel } from '../../shared/src/dates';
 import type { Line, Stocktake, StocktakeRef } from '../../shared/src/types';
 import { ApiError } from './errors';
 
-type Team = Parameters<typeof specLines>[0];
+type Team = { slug: string; spec: string | null };
 
 interface LineRow {
   item_id: string;
@@ -50,7 +50,7 @@ export async function openStocktake(db: D1Database, team: Team, date: string, id
   // EXISTS guard stops lines being written against the unused id.
   await db.batch([
     db.prepare('INSERT OR IGNORE INTO stocktakes (id, team_slug, date, created_at) VALUES (?, ?, ?, ?)').bind(id, team.slug, date, at),
-    ...specLines(team).map((l) =>
+    ...specLines(team.spec).map((l) =>
       db
         .prepare(
           `INSERT INTO lines (stocktake_id, item_id, name, category, sort, expected, count, added, updated_at)

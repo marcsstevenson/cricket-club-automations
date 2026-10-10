@@ -1,5 +1,5 @@
 {
-  "source": "PCC Gear List 2026-27 Season - v7.xlsx — Items, Kit Spec, Oct Gear check",
+  "source": "PCC Gear List 2026-27 Season - v7.xlsx — Items, Kit Spec",
   "categories": [
     "Stumps & Wickets",
     "Bats",
@@ -410,6 +410,39 @@
       "FLD-TC": 2,
       "FLD-CS": 1
     },
+    "Super 8's": {
+      "STU-04": 4,
+      "STU-05": 2,
+      "BAT-W3": 1,
+      "BAT-W4": 2,
+      "BAT-W5": 2,
+      "BAT-W6": 1,
+      "BAT-GR": 2,
+      "BAL-TEE": 5,
+      "BAL-S8M": 9,
+      "BAL-BAG": 1,
+      "PAD-SJ": 1,
+      "PAD-J": 2,
+      "PAD-Y": 2,
+      "THG-SJ": 1,
+      "THG-J": 1,
+      "THG-Y": 1,
+      "ARM-J": 1,
+      "ARM-Y": 1,
+      "GLV-SJR": 1,
+      "GLV-JR": 2,
+      "GLV-YR": 2,
+      "GLV-JL": 1,
+      "GLV-YL": 1,
+      "KPD-J": 1,
+      "KGL-SJ": 1,
+      "KGL-J": 1,
+      "HEL-J": 2,
+      "HEL-Y": 2,
+      "FLD-SCC": 30,
+      "FLD-TC": 2,
+      "FLD-CS": 1
+    },
     "Div 4": {
       "STU-04": 4,
       "STU-05": 2,
@@ -526,6 +559,65 @@
       "FLD-TC": 2,
       "FLD-CS": 1
     },
+    "Div 3": {
+      "STU-04": 4,
+      "STU-05": 2,
+      "BAT-H4": 1,
+      "BAT-H5": 2,
+      "BAT-H6": 1,
+      "BAT-GR": 2,
+      "BAL-S8P": 3,
+      "BAL-BAG": 1,
+      "PAD-J": 2,
+      "PAD-Y": 2,
+      "THG-SJ": 1,
+      "THG-J": 1,
+      "THG-Y": 1,
+      "ARM-J": 1,
+      "ARM-Y": 1,
+      "GLV-SJR": 1,
+      "GLV-JR": 2,
+      "GLV-YR": 1,
+      "GLV-YL": 1,
+      "KPD-J": 1,
+      "KGL-J": 1,
+      "KGL-Y": 1,
+      "HEL-J": 2,
+      "HEL-Y": 2,
+      "HEL-A": 1,
+      "FLD-SCC": 30,
+      "FLD-CS": 1
+    },
+    "Div 2": {
+      "STU-04": 4,
+      "STU-05": 2,
+      "BAT-H4": 1,
+      "BAT-H5": 1,
+      "BAT-H6": 2,
+      "BAT-GR": 2,
+      "BAL-HPR": 8,
+      "BAL-HPC": 3,
+      "BAL-BAG": 1,
+      "PAD-J": 2,
+      "PAD-Y": 2,
+      "THG-SJ": 1,
+      "THG-J": 1,
+      "THG-Y": 1,
+      "ARM-J": 1,
+      "ARM-Y": 1,
+      "GLV-SJR": 1,
+      "GLV-JR": 2,
+      "GLV-YR": 1,
+      "GLV-YL": 1,
+      "KPD-J": 1,
+      "KGL-J": 1,
+      "KGL-Y": 1,
+      "HEL-J": 2,
+      "HEL-Y": 2,
+      "HEL-A": 1,
+      "FLD-SCC": 30,
+      "FLD-CS": 1
+    },
     "Div 3 Hardball": {
       "STU-04": 4,
       "STU-05": 2,
@@ -554,224 +646,60 @@
       "HEL-Y": 3,
       "FLD-SCC": 30,
       "FLD-CS": 1
+    },
+    "Smash Play": {
+      "STU-01": 30,
+      "STU-02": 10,
+      "BAT-P1": 3,
+      "BAT-P2": 3,
+      "BAT-P3": 3,
+      "BAL-TEE": 12,
+      "BAL-JYP": 12,
+      "BAL-BAG": 1
+    },
+    "Y7-8/Div 2": {
+      "STU-01": 6,
+      "STU-02": 2,
+      "STU-05": 2,
+      "BAT-H4": 2,
+      "BAT-H5": 2,
+      "BAT-H6": 1,
+      "BAT-GR": 2,
+      "BAL-HRM": 6,
+      "BAL-BAG": 1,
+      "PAD-J": 2,
+      "PAD-Y": 2,
+      "THG-J": 2,
+      "THG-Y": 1,
+      "ARM-J": 1,
+      "ARM-Y": 1,
+      "GLV-JR": 2,
+      "GLV-YR": 2,
+      "GLV-JL": 1,
+      "GLV-YL": 1,
+      "KPD-J": 1,
+      "KPD-Y": 1,
+      "KGL-J": 1,
+      "KGL-Y": 1,
+      "HEL-J": 1,
+      "HEL-Y": 3,
+      "FLD-SCC": 30,
+      "FLD-CS": 1
+    },
+    "Senior Social": {
+      "STU-01": 6,
+      "STU-03": 2,
+      "BAT-P5": 2,
+      "BAL-TEE": 2,
+      "BAL-SYP": 4,
+      "BAL-BAG": 1,
+      "FLD-CS": 1,
+      "FLD-BMC": 40
+    },
+    "Senior (Patriots)": {
+      "STU-04": 2,
+      "STU-05": 2,
+      "HEL-A": 2
     }
-  },
-  "teams": [
-    {
-      "slug": "bears",
-      "name": "Parklands Bears",
-      "mascot": "bears",
-      "grade": "Year 4",
-      "spec": "Year 4",
-      "dot": "dark blue"
-    },
-    {
-      "slug": "cheetahs",
-      "name": "Parklands Cheetahs",
-      "mascot": "cheetahs",
-      "grade": "Year 5",
-      "spec": "Year 5",
-      "dot": "orange"
-    },
-    {
-      "slug": "dolphins",
-      "name": "Parklands Dolphins",
-      "mascot": "dolphins",
-      "grade": "Kiwi Year 2",
-      "spec": "Kiwi Y2",
-      "dot": "light blue"
-    },
-    {
-      "slug": "dragons",
-      "name": "Parklands Dragons",
-      "mascot": "dragons",
-      "grade": "Year 4",
-      "spec": "Year 4",
-      "dot": "orange"
-    },
-    {
-      "slug": "gorillas",
-      "name": "Parklands Gorillas",
-      "mascot": "gorillas",
-      "grade": "Year 3",
-      "spec": "Year 3",
-      "dot": "green"
-    },
-    {
-      "slug": "jackals",
-      "name": "Parklands Jackals",
-      "mascot": "jackals",
-      "grade": "Year 6",
-      "spec": "Year 6",
-      "dot": "yellow"
-    },
-    {
-      "slug": "korimako",
-      "name": "ECSCC/Parklands Korimako",
-      "mascot": "foxes",
-      "grade": "Division 5",
-      "spec": "Div 5",
-      "dot": null
-    },
-    {
-      "slug": "lemurs",
-      "name": "Parklands Lemurs",
-      "mascot": "lemurs",
-      "grade": "Year 4",
-      "spec": "Year 4",
-      "dot": "yellow"
-    },
-    {
-      "slug": "leopards",
-      "name": "Parklands Leopards",
-      "mascot": "leopards",
-      "grade": "Year 6",
-      "spec": "Year 6",
-      "dot": "light blue"
-    },
-    {
-      "slug": "lions",
-      "name": "Parklands Lions",
-      "mascot": "lions",
-      "grade": "Kiwi Year 1/2",
-      "spec": "Kiwi Y1",
-      "dot": "yellow"
-    },
-    {
-      "slug": "meerkats",
-      "name": "Parklands Meerkats",
-      "mascot": "meerkats",
-      "grade": "Division 4",
-      "spec": "Div 4",
-      "dot": "green"
-    },
-    {
-      "slug": "monkeys",
-      "name": "Parklands Monkeys",
-      "mascot": "monkeys",
-      "grade": "Kiwi Year 1",
-      "spec": "Kiwi Y1",
-      "dot": "light blue"
-    },
-    {
-      "slug": "narwhals",
-      "name": "Parklands Narwhals",
-      "mascot": "narwhals",
-      "grade": "Kiwi Year 1/2",
-      "spec": "Kiwi Y1",
-      "dot": "yellow"
-    },
-    {
-      "slug": "orcas",
-      "name": "Parklands Orcas",
-      "mascot": "orcas",
-      "grade": "Kiwi Year 1/2",
-      "spec": "Kiwi Y1",
-      "dot": null
-    },
-    {
-      "slug": "pandas",
-      "name": "Parklands/NBCC Pandas",
-      "mascot": "pandas",
-      "grade": "Division 3 Hardball",
-      "spec": "Div 3 Hardball",
-      "dot": "orange"
-    },
-    {
-      "slug": "panthers",
-      "name": "Parklands Panthers",
-      "mascot": "panthers",
-      "grade": "Year 3",
-      "spec": "Year 3",
-      "dot": "green"
-    },
-    {
-      "slug": "pelicans",
-      "name": "Parklands Pelicans",
-      "mascot": "pelicans",
-      "grade": "Year 5",
-      "spec": "Year 5",
-      "dot": "dark blue"
-    },
-    {
-      "slug": "penguins",
-      "name": "Parklands Penguins",
-      "mascot": "penguins",
-      "grade": "Kiwi Year 1",
-      "spec": "Kiwi Y1",
-      "dot": "yellow"
-    },
-    {
-      "slug": "pumas",
-      "name": "Parklands Pumas",
-      "mascot": "pumas",
-      "grade": "Year 7",
-      "spec": "Year 7",
-      "dot": "green"
-    },
-    {
-      "slug": "pythons",
-      "name": "Parklands Pythons",
-      "mascot": "pythons",
-      "grade": "Year 6",
-      "spec": "Year 6",
-      "dot": "dark blue"
-    },
-    {
-      "slug": "rhinos",
-      "name": "Parklands Rhinos",
-      "mascot": "rhinos",
-      "grade": "Year 5",
-      "spec": "Year 5",
-      "dot": "light blue"
-    },
-    {
-      "slug": "sharks",
-      "name": "Parklands Sharks",
-      "mascot": "sharks",
-      "grade": "Year 3",
-      "spec": "Year 3",
-      "dot": "dark blue"
-    },
-    {
-      "slug": "swans",
-      "name": "Parklands Swans",
-      "mascot": "swans",
-      "grade": "Division 5",
-      "spec": "Div 5",
-      "dot": null
-    },
-    {
-      "slug": "tigers",
-      "name": "Parklands Tigers",
-      "mascot": "tigers",
-      "grade": "Year 3",
-      "spec": "Year 3",
-      "dot": "orange"
-    },
-    {
-      "slug": "unicorns",
-      "name": "Parklands Unicorns",
-      "mascot": "unicorns",
-      "grade": "Division 5",
-      "spec": "Div 5",
-      "dot": "light blue"
-    },
-    {
-      "slug": "wolves",
-      "name": "Parklands Wolves",
-      "mascot": "wolves",
-      "grade": "Year 5",
-      "spec": "Year 5",
-      "dot": "green"
-    },
-    {
-      "slug": "wombats",
-      "name": "Parklands Wombats",
-      "mascot": "wombats",
-      "grade": "Year 3",
-      "spec": "Year 3",
-      "dot": "orange"
-    }
-  ]
+  }
 }

@@ -22,17 +22,27 @@ npm run e2e         # Playwright against wrangler dev; wipes local .wrangler/sta
 
 ## Gear data
 
-Teams, grades, dot colours, the catalogue and the Kit Spec live in `shared/src/gear-data.json`, built from the
-gear workbook and the game-day team list. After the workbook changes, rebuild it, check the diff, then deploy:
+The catalogue and the Kit Spec live in `shared/src/gear-data.json`, built from the gear workbook. After the
+workbook changes, rebuild it, check the diff, then deploy:
 
 ```bash
 pip install openpyxl   # once
 python scripts/import_gear.py --workbook "C:\Users\marcs\Parklands Cricket Club Inc\PCC Committee - Documents\Gear\PCC Gear List 2026-27 Season - v7.xlsx"
 ```
 
-Use `--teams-sheet "<tab>"` when the grade and dot colour tab is renamed (default `Oct Gear check`). The script
-stops if a game-day team is missing from that tab or has a grade it doesn't know; add new grades to `GRADES`
-in the script. Existing stocktakes keep the quantities they started with.
+Existing stocktakes keep the quantities they started with.
+
+## Teams, pools and admin
+
+Teams and pools are in D1 (`teams`), seeded by `migrations/0002_teams.sql`. Add, hide and export them at
+`/admin` (not linked anywhere), which needs the `ADMIN_PASSCODE` Worker secret:
+
+```bash
+npx wrangler secret put ADMIN_PASSCODE
+```
+
+Locally, `npm run e2e` starts wrangler with `ADMIN_PASSCODE=e2e-passcode`; for `npm run dev`, put
+`ADMIN_PASSCODE=...` in `.dev.vars` (git-ignored).
 
 ## Deploy
 
