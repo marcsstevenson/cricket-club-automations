@@ -1,60 +1,52 @@
 import { items } from '../../shared/src/data';
+import { nzDate, nzDateTime } from '../../shared/src/dates';
+import type { LogEntry } from '../../shared/src/types';
 import { toCsv, type Cell } from './csv';
-import { ApiError } from './errors';
-import { listTeams } from './teams';
+import { LOG_SELECT, teamLevels, toEntry } from './levels';
+import { listTeams, type TeamRow } from './teams';
 
-interface LatestLine {
-  team_slug: string;
-  date: string;
-  item_id: string;
-  name: string;
-  category: string;
-  sort: number;
-  expected: number;
-  count: number;
-  added: number;
-}
-
-// Every line of each team's most recent stocktake.
-const LATEST = `
-  SELECT s.team_slug, s.date, l.item_id, l.name, l.category, l.sort, l.expected, l.count, l.added
-  FROM stocktakes s
-  JOIN (SELECT team_slug, MAX(date) AS date FROM stocktakes GROUP BY team_slug) m ON m.team_slug = s.team_slug AND m.date = s.date
-  JOIN lines l ON l.stocktake_id = s.id`;
-
-/** One row per catalogue item, a column per team/pool (hidden ones marked), counts from each latest stocktake. */
+/** One row per catalogue item, a column per team/pool (hidden ones marked), current levels. */
 export async function clubCsv(db: D1Database): Promise<string> {
   const teams = await listTeams(db, true);
-  const { results } = await db.prepare(LATEST).all<LatestLine>();
-  const dates = new Map<string, string>();
-  const counts = new Map<string, number>(); // `${slug}|${item}`
-  const extra = new Map<string, { name: string; category: string }>(); // lines for items no longer in the catalogue
-  const known = new Set(items.map((i) => i.id));
-  for (const l of results) {
-    dates.set(l.team_slug, l.date);
-    counts.set(`${l.team_slug}|${l.item_id}`, l.count);
-    if (!known.has(l.item_id)) extra.set(l.item_id, { name: l.name, category: l.category });
-  }
+  const [levels, last] = await db.batch([
+    db.prepare('SELECT team_slug, item_id, level FROM levels'),
+    db.prepare('SELECT team_slug, MAX(at) AS at FROM log GROUP BY team_slug'),
+  ]);
+  const level = new Map((levels.results as { team_slug: string; item_id: string; level: number }[]).map((r) => [`${r.team_slug}|${r.item_id}`, r.level]));
+  const lastChange = new Map((last.results as { team_slug: string; at: string }[]).map((r) => [r.team_slug, nzDate(new Date(r.at))]));
   const rows: Cell[][] = [
     ['Category', 'Item', 'Club total', ...teams.map((t) => (t.hidden ? `${t.name} (hidden)` : t.name))],
-    ['Stocktake date', '', '', ...teams.map((t) => dates.get(t.slug) ?? '')],
+    ['Last change', '', '', ...teams.map((t) => lastChange.get(t.slug) ?? '')],
   ];
-  const all = [...items.map((i) => ({ id: i.id, name: i.name, category: i.category })), ...[...extra].map(([id, x]) => ({ id, ...x }))];
-  for (const item of all) {
-    const cells = teams.map((t) => counts.get(`${t.slug}|${item.id}`));
-    const total = cells.reduce<number>((n, c) => n + (c ?? 0), 0);
-    rows.push([item.category, item.name, total, ...cells]);
+  for (const item of items) {
+    const cells = teams.map((t) => level.get(`${t.slug}|${item.id}`));
+    rows.push([item.category, item.name, cells.reduce<number>((n, c) => n + (c ?? 0), 0), ...cells]);
   }
   return toCsv(rows);
 }
 
-/** The team's latest stocktake, one row per line. */
-export async function teamCsv(db: D1Database, slug: string): Promise<{ csv: string; date: string }> {
-  const { results } = await db.prepare(`${LATEST} WHERE s.team_slug = ? ORDER BY l.sort, l.name`).bind(slug).all<LatestLine>();
-  if (!results.length) throw new ApiError(404, 'no_stocktake', 'This team has no stocktake yet.');
-  const rows: Cell[][] = [
-    ['Category', 'Item', 'Count', 'Kit Spec', 'Added'],
-    ...results.map((l) => [l.category, l.name, l.count, l.expected, l.added ? 'Yes' : '']),
-  ];
-  return { csv: toCsv(rows), date: results[0].date };
+export async function levelsCsv(db: D1Database, team: TeamRow): Promise<string> {
+  const lines = await teamLevels(db, team);
+  return toCsv([
+    ['Category', 'Item', 'Level', 'Kit Spec', 'Listed'],
+    ...lines.map((l) => [l.category, l.name, l.level, l.kitSpec || null, l.added ? 'Added' : 'Kit Spec']),
+  ]);
+}
+
+const KIND = (e: LogEntry) =>
+  e.kind === 'opening' ? 'Opening' : e.kind === 'adjust' ? 'Adjust' : e.kind === 'count' ? 'Set count' : e.change < 0 ? 'Move out' : 'Move in';
+
+/** Every log entry (or one team's), newest first. */
+export async function logCsv(db: D1Database, slug?: string): Promise<string> {
+  const stmt = slug
+    ? db.prepare(`SELECT x.*, tm.name AS team_name FROM (${LOG_SELECT} WHERE l.team_slug = ?) x JOIN teams tm ON tm.slug = x.team_slug ORDER BY x.id DESC`).bind(slug)
+    : db.prepare(`SELECT x.*, tm.name AS team_name FROM (${LOG_SELECT}) x JOIN teams tm ON tm.slug = x.team_slug ORDER BY x.id DESC`);
+  const { results } = await stmt.all<Parameters<typeof toEntry>[0] & { team_name: string }>();
+  return toCsv([
+    ['When', 'Who', 'Team', 'Item', 'Kind', 'Change', 'Level after', 'From', 'To', 'Note'],
+    ...results.map((r) => {
+      const e = toEntry(r);
+      return [nzDateTime(e.at), e.who, r.team_name, e.itemName, KIND(e), e.change, e.levelAfter, e.from?.name, e.to?.name, e.note];
+    }),
+  ]);
 }

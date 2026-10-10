@@ -1,4 +1,4 @@
-import { DOT_COLOURS, MASCOTS, specColumns } from '../../shared/src/data';
+import { DOT_COLOURS, MASCOTS, specColumns, specLines } from '../../shared/src/data';
 import type { AdminTeam, NewTeam, TeamKind, TeamSummary } from '../../shared/src/types';
 import { ApiError } from './errors';
 
@@ -31,14 +31,26 @@ export async function getTeam(db: D1Database, slug: string): Promise<TeamRow> {
   return row;
 }
 
+/** Any team or pool, hidden included, else 404. */
+export async function getAnyTeam(db: D1Database, slug: string): Promise<TeamRow> {
+  const row = await db.prepare('SELECT * FROM teams WHERE slug = ?').bind(slug.toLowerCase()).first<TeamRow>();
+  if (!row) throw new ApiError(404, 'team_not_found', 'Team not found.');
+  return row;
+}
+
 export async function adminTeams(db: D1Database): Promise<AdminTeam[]> {
   const { results } = await db
-    .prepare(`SELECT t.*, (SELECT MAX(date) FROM stocktakes s WHERE s.team_slug = t.slug) AS latest FROM teams t ${ORDER}`)
-    .all<TeamRow & { latest: string | null }>();
+    .prepare(`SELECT t.*, (SELECT MAX(at) FROM log g WHERE g.team_slug = t.slug) AS last_change FROM teams t ${ORDER}`)
+    .all<TeamRow & { last_change: string | null }>();
   return results.map(toAdmin);
 }
 
-const toAdmin = (r: TeamRow & { latest: string | null }): AdminTeam => ({ ...summary(r), spec: r.spec, hidden: r.hidden === 1, latest: r.latest });
+const toAdmin = (r: TeamRow & { last_change: string | null }): AdminTeam => ({
+  ...summary(r),
+  spec: r.spec,
+  hidden: r.hidden === 1,
+  lastChange: r.last_change,
+});
 
 const SLUG = /^[a-z][a-z0-9-]{1,29}$/;
 const RESERVED = new Set(['admin', 'api']);
@@ -85,6 +97,13 @@ export async function addTeam(db: D1Database, t: Required<NewTeam>, now: Date): 
     )
     .bind(t.slug, t.name, t.kind, t.mascot, t.grade, t.spec, t.dot, now.toISOString())
     .run();
+  // Its Kit Spec items (team) or every item (pool) are listed at 0.
+  const at = now.toISOString();
+  await db.batch(
+    specLines(t.spec).map(({ item }) =>
+      db.prepare('INSERT OR IGNORE INTO levels (team_slug, item_id, level, added, updated_at) VALUES (?, ?, 0, 0, ?)').bind(t.slug, item.id, at),
+    ),
+  );
   return (await adminTeams(db)).find((x) => x.slug === t.slug)!;
 }
 
