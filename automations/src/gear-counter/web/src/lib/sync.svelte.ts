@@ -80,7 +80,9 @@ class SyncQueue {
     clearTimeout(this.#timer);
     try {
       for (let key = Object.keys(this.pending)[0]; key; key = Object.keys(this.pending)[0]) {
-        const [team, item, who] = key.split('|');
+        // Slugs and item ids never contain '|'; the name may, so it is everything after the second '|'.
+        const [team, item] = key.split('|', 2);
+        const who = key.slice(team.length + item.length + 2);
         const total = this.pending[key];
         const delta = Math.max(-MAX_STEP, Math.min(MAX_STEP, total));
         try {

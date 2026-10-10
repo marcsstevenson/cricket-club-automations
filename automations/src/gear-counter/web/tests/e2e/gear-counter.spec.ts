@@ -144,6 +144,25 @@ test('admin adds a pool, downloads CSVs and hides it', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Garage Shed/ })).toHaveCount(0);
 });
 
+test('coming back to the page while offline keeps the counter', async ({ page, context }) => {
+  await named(page, '/narwhals');
+  const tees = line(page, 'Yellow batting tee');
+  await tees.getByRole('button', { name: 'One more Yellow batting tee' }).click();
+  await expect(page.locator('.log li')).toHaveCount(1);
+  await context.setOffline(true);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(1000);
+  await expect(page.getByRole('heading', { name: 'Parklands Narwhals' })).toBeVisible();
+  await expect(tees.locator('.qty')).toHaveText('1');
+  await context.setOffline(false);
+});
+
+test('a name containing | is recorded as typed', async ({ page }) => {
+  await named(page, '/monkeys', 'Sam|Jo');
+  await line(page, 'Yellow batting tee').getByRole('button', { name: 'One more Yellow batting tee' }).click();
+  await expect(page.locator('.log li').first()).toContainText('Sam|Jo ·');
+});
+
 test('an unknown team shows Team not found', async ({ page }) => {
   await page.goto('/pumaz');
   await expect(page.getByRole('heading', { name: 'Team not found' })).toBeVisible();

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
   import { items } from '$shared/data';
   import { levelsText } from '$shared/levels';
   import type { LevelLine } from '$shared/types';
@@ -19,6 +18,7 @@
   const ORDER = new Map(items.map((i, n) => [i.id, n]));
   const team = $derived(data.page.team);
   let levels = $derived<LevelLine[]>(data.page.levels);
+  let recent = $derived(data.page.recent);
   let message = $state('');
   let notice = $state('');
   let renaming = $state(false);
@@ -38,7 +38,17 @@
   const have = $derived(new Set(levels.map((l) => l.itemId)));
   const saving = $derived(queue.hasPending(team.slug));
 
-  const refresh = () => invalidateAll();
+  // Re-read levels and recent changes in the background. Offline (or any failure): keep what is on screen.
+  async function refresh() {
+    try {
+      const fresh = await api().team(team.slug);
+      if (fresh.team.slug !== team.slug || queue.hasPending(team.slug)) return;
+      levels = fresh.levels;
+      recent = fresh.recent;
+    } catch {
+      // keep the counter usable
+    }
+  }
 
   $effect(() => {
     const slug = team.slug;
@@ -58,7 +68,7 @@
   $effect(() => {
     const slug = team.slug;
     const onShow = () => {
-      if (document.visibilityState === 'visible' && !queue.hasPending(slug)) void refresh().catch(() => {});
+      if (document.visibilityState === 'visible' && !queue.hasPending(slug)) void refresh();
     };
     document.addEventListener('visibilitychange', onShow);
     return () => document.removeEventListener('visibilitychange', onShow);
@@ -151,7 +161,7 @@
 
 <div class="add-row"><AddItem {have} onadd={add} /></div>
 
-<RecentChanges entries={data.page.recent} />
+<RecentChanges entries={recent} />
 
 {#if active}
   <ItemDialog {team} teams={data.teams} line={active} onclose={() => (active = null)} ondone={done} />

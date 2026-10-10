@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { specLines } from '../../shared/src/data';
 import type { LevelLine, TeamPage, TeamSummary } from '../../shared/src/types';
@@ -189,5 +190,23 @@ describe('recent changes', () => {
     const { recent } = await page(api, 'pumas');
     expect(recent).toHaveLength(50);
     expect(recent[0].id).toBeGreaterThan(recent[49].id);
+  });
+});
+
+describe('review fixes', () => {
+  it('groups concurrent taps by one person without losing any', async () => {
+    const api = client();
+    await Promise.all(Array.from({ length: 8 }, () => adjust(api, 'pumas', 'FLD-SCC', 1)));
+    const { recent, levels } = await page(api, 'pumas');
+    expect(levels.find((l) => l.itemId === 'FLD-SCC')?.level).toBe(8);
+    expect(recent.map((e) => [e.who, e.change, e.levelAfter])).toEqual([['Sam', 8, 8]]);
+  });
+
+  it('lists Kit Spec items that were missing (e.g. after a Kit Spec update)', async () => {
+    const api = client();
+    await env.DB.prepare("DELETE FROM levels WHERE team_slug = 'penguins' AND item_id = 'STU-03'").run();
+    await env.DB.prepare("DELETE FROM levels WHERE team_slug = 'pool' AND item_id = 'FLD-TC'").run();
+    expect((await page(api, 'penguins')).levels.map((l) => l.itemId)).toContain('STU-03');
+    expect((await page(api, 'pool')).levels).toHaveLength(62);
   });
 });

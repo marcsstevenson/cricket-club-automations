@@ -6,7 +6,7 @@ import type { TeamPage } from '../../shared/src/types';
 import { registerAdmin } from './admin';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
-import { adjust, listItem, move, recent, setCount, teamLevels, unlistItem } from './levels';
+import { adjust, ensureListed, listItem, move, recent, setCount, teamLevels, unlistItem } from './levels';
 import { getTeam, listTeams, summary } from './teams';
 import { parseNote, parseWho } from './who';
 
@@ -46,6 +46,7 @@ export function createApp(deps: Deps) {
 
   app.get('/teams/:slug', async (c) => {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
+    await ensureListed(c.env.DB, t, deps.now());
     const page: TeamPage = { team: summary(t), spec: t.spec, levels: await teamLevels(c.env.DB, t), recent: await recent(c.env.DB, t.slug) };
     return c.json(page);
   });

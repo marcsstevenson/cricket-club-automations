@@ -1,4 +1,4 @@
-import { findItem, kitSpecQty } from '../../shared/src/data';
+import { findItem, kitSpecQty, specLines } from '../../shared/src/data';
 import type { LevelLine, LogEntry, LogKind } from '../../shared/src/types';
 import { ApiError } from './errors';
 import type { TeamRow } from './teams';
@@ -12,6 +12,18 @@ export function itemName(itemId: string): string {
 }
 
 const notListed = () => new ApiError(404, 'item_not_listed', 'That item is not listed here.');
+
+/**
+ * Lists the team's Kit Spec items (every item for a pool) that have no row yet — e.g. after gear-data.json gains
+ * items or Kit Spec quantities — so spec §2 "always listed" holds. One statement; a no-op when nothing is missing.
+ */
+export async function ensureListed(db: D1Database, team: TeamRow, now: Date): Promise<void> {
+  const ids = JSON.stringify(specLines(team.spec).map((l) => l.item.id));
+  await db
+    .prepare('INSERT OR IGNORE INTO levels (team_slug, item_id, level, added, updated_at) SELECT ?1, value, 0, 0, ?2 FROM json_each(?3)')
+    .bind(team.slug, now.toISOString(), ids)
+    .run();
+}
 
 export async function teamLevels(db: D1Database, team: TeamRow): Promise<LevelLine[]> {
   const { results } = await db
@@ -37,42 +49,43 @@ export async function teamLevels(db: D1Database, team: TeamRow): Promise<LevelLi
     .map((x) => x.line);
 }
 
-/** + / − : atomic on the level; the log entry is grouped (spec §4.1). */
+/**
+ * + / − (spec §4.1). One D1 transaction: the log entry is grouped (or created, or dropped when it nets to 0)
+ * and the level changed together, so a retry or two devices tapping at once can't double-count or lose a change.
+ * The change actually applied is MAX(-level, delta), so the floor at 0 is reflected in the log.
+ */
 export async function adjust(db: D1Database, team: TeamRow, itemId: string, delta: number, who: string, now: Date): Promise<number> {
   const name = itemName(itemId);
-  const [before, after] = await db.batch<{ level: number }>([
-    db.prepare('SELECT level FROM levels WHERE team_slug = ?1 AND item_id = ?2').bind(team.slug, itemId),
+  const at = now.toISOString();
+  const cutoff = new Date(now.getTime() - GROUP_MS).toISOString();
+  const level = '(SELECT level FROM levels WHERE team_slug = ?1 AND item_id = ?2)';
+  const applied = `MAX(-${level}, ?3)`;
+  const newest = '(SELECT id FROM log WHERE team_slug = ?1 AND item_id = ?2 ORDER BY id DESC LIMIT 1)';
+  const results = await db.batch<{ level: number }>([
+    // Add to this person's recent adjust entry for the item…
+    db
+      .prepare(
+        `UPDATE log SET change = change + ${applied}, level_after = ${level} + ${applied}, updated_at = ?4
+         WHERE id = ${newest} AND kind = 'adjust' AND who = ?5 COLLATE NOCASE AND updated_at > ?6 AND ${applied} <> 0`,
+      )
+      .bind(team.slug, itemId, delta, at, who, cutoff),
+    // …or start a new one.
+    db
+      .prepare(
+        `INSERT INTO log (at, updated_at, team_slug, item_id, item_name, kind, change, level_after, who)
+         SELECT ?4, ?4, ?1, ?2, ?7, 'adjust', ${applied}, ${level} + ${applied}, ?5
+         WHERE changes() = 0 AND ${level} IS NOT NULL AND ${applied} <> 0`,
+      )
+      .bind(team.slug, itemId, delta, at, who, cutoff, name),
+    // A group that nets to 0 disappears.
+    db.prepare(`DELETE FROM log WHERE id = ${newest} AND kind = 'adjust' AND change = 0`).bind(team.slug, itemId),
     db
       .prepare('UPDATE levels SET level = MAX(0, level + ?3), updated_at = ?4 WHERE team_slug = ?1 AND item_id = ?2 RETURNING level')
-      .bind(team.slug, itemId, delta, now.toISOString()),
+      .bind(team.slug, itemId, delta, at),
   ]);
-  const old = before.results[0]?.level;
-  const level = after.results[0]?.level;
-  if (old === undefined || level === undefined) throw notListed();
-  if (level !== old) await logAdjust(db, team.slug, itemId, name, level - old, level, who, now);
-  return level;
-}
-
-async function logAdjust(db: D1Database, slug: string, itemId: string, name: string, change: number, levelAfter: number, who: string, now: Date) {
-  const at = now.toISOString();
-  const last = await db
-    .prepare('SELECT id, kind, who, change, updated_at FROM log WHERE team_slug = ? AND item_id = ? ORDER BY id DESC LIMIT 1')
-    .bind(slug, itemId)
-    .first<{ id: number; kind: LogKind; who: string; change: number; updated_at: string }>();
-  const fresh = last && Date.parse(last.updated_at) > now.getTime() - GROUP_MS;
-  if (last && fresh && last.kind === 'adjust' && last.who.toLowerCase() === who.toLowerCase()) {
-    const total = last.change + change;
-    if (total === 0) await db.prepare('DELETE FROM log WHERE id = ?').bind(last.id).run();
-    else await db.prepare('UPDATE log SET change = ?, level_after = ?, updated_at = ? WHERE id = ?').bind(total, levelAfter, at, last.id).run();
-    return;
-  }
-  await db
-    .prepare(
-      `INSERT INTO log (at, updated_at, team_slug, item_id, item_name, kind, change, level_after, who)
-       VALUES (?1, ?1, ?2, ?3, ?4, 'adjust', ?5, ?6, ?7)`,
-    )
-    .bind(at, slug, itemId, name, change, levelAfter, who)
-    .run();
+  const row = results[3].results[0];
+  if (!row) throw notListed();
+  return row.level;
 }
 
 export async function listItem(db: D1Database, team: TeamRow, itemId: string, now: Date): Promise<LevelLine> {
