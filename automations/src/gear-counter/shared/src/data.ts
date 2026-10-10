@@ -34,6 +34,11 @@ export function specLines(spec: string | null): { item: Item; sort: number; expe
   return items.flatMap((item, sort) => (column[item.id] ? [{ item, sort, expected: column[item.id] }] : []));
 }
 
+/** Kit Spec quantity for an item (0 when not in the column, or for a pool). */
+export function kitSpecQty(spec: string | null, itemId: string): number {
+  return spec === null ? 0 : (data.specs[spec]?.[itemId] ?? 0);
+}
+
 export const DOT_COLOURS: Record<string, string> = {
   yellow: '#e8c21b',
   'light blue': '#6cb6e6',

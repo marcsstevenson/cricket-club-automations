@@ -17,8 +17,8 @@ export interface AdminTeam extends TeamSummary {
   /** Kit Spec column; null for a pool. */
   spec: string | null;
   hidden: boolean;
-  /** Date of the latest stocktake, or null. */
-  latest: string | null;
+  /** ISO time of the latest log entry, or null. */
+  lastChange: string | null;
 }
 
 export interface NewTeam {
@@ -31,33 +31,48 @@ export interface NewTeam {
   mascot?: string;
 }
 
-export interface StocktakeRef {
-  id: string;
-  date: string;
-  label: string;
-}
-
 export interface TeamPage {
   team: TeamSummary;
-  /** Kit Spec column new stocktakes start from; null for a pool (every item). */
+  /** Kit Spec column; null for a pool. */
   spec: string | null;
-  today: string;
-  /** Newest first. */
-  stocktakes: StocktakeRef[];
+  /** Listed items in catalogue order. */
+  levels: LevelLine[];
+  /** Newest first, at most 50. */
+  recent: LogEntry[];
 }
 
-export interface Line {
+export interface LevelLine {
   itemId: string;
   name: string;
   category: string;
-  expected: number;
-  count: number;
+  level: number;
+  /** Kit Spec quantity for this team (0 for added items and pools). */
+  kitSpec: number;
+  /** Listed with + Add item (not in the team's Kit Spec). */
   added: boolean;
 }
 
-export interface Stocktake extends StocktakeRef {
-  teamSlug: string;
-  lines: Line[];
+export type LogKind = 'opening' | 'adjust' | 'move' | 'count';
+
+export interface TeamRef {
+  slug: string;
+  name: string;
+}
+
+export interface LogEntry {
+  id: number;
+  /** ISO time the entry was created (server time). */
+  at: string;
+  who: string;
+  itemId: string;
+  itemName: string;
+  kind: LogKind;
+  /** Signed change to this team's level. */
+  change: number;
+  levelAfter: number;
+  from: TeamRef | null;
+  to: TeamRef | null;
+  note: string | null;
 }
 
 export interface ApiErrorBody {

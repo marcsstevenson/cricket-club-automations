@@ -62,7 +62,7 @@ teams in their sort order, then visible pools (Club pool first, then pools in th
   - `Jo · 11 Oct, 9:03 am · Moved 3 Helmets J to Parklands Pumas · "for Saturday"`
   - `Jo · 11 Oct, 9:03 am · Received 3 Helmets J from Club pool · "for Saturday"`
   - `Sam · 10 Oct, 4:40 pm · Set Bails (pair) 4 → 6`
-  - `Migration · 10 Oct · Opening level Bails (pair) 4`
+  - `Migration · 10 Oct, 9:31 am · Opening level Bails (pair) 4`
 - The page re-reads levels and recent changes when it comes back into view and nothing is queued.
 
 ### 3.4 Admin `/admin`
