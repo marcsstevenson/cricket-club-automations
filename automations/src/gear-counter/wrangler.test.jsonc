@@ -3,5 +3,8 @@
   "main": "api/src/index.ts",
   "compatibility_date": "2026-08-22",
   "compatibility_flags": ["nodejs_compat"],
-  "d1_databases": [{ "binding": "DB", "database_name": "test", "database_id": "test" }]
+  "d1_databases": [
+    { "binding": "DB", "database_name": "test", "database_id": "test" },
+    { "binding": "MIGRATE_DB", "database_name": "migrate", "database_id": "migrate" }
+  ]
 }

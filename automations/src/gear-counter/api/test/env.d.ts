@@ -4,6 +4,7 @@ declare global {
   namespace Cloudflare {
     interface Env extends AppBindings {
       TEST_MIGRATIONS: import('@cloudflare/vitest-pool-workers').D1Migration[];
+      MIGRATE_DB: D1Database;
     }
   }
 }
