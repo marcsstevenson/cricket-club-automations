@@ -6,6 +6,10 @@ const MAX_STEP = 20; // the API's largest single change
 
 const keyOf = (stocktakeId: string, itemId: string) => `${stocktakeId}|${itemId}`;
 
+/** Id of a team's unsaved stocktake for today; it is created on the server when its first tap is sent. */
+export const draftId = (teamSlug: string) => `draft:${teamSlug}`;
+export const isDraft = (stocktakeId: string) => stocktakeId.startsWith('draft:');
+
 function load(): Record<string, number> {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? '{}');
@@ -25,6 +29,8 @@ class SyncQueue {
   error = $state('');
   /** Called with the server's count after each change lands. */
   onCount: ((stocktakeId: string, itemId: string, count: number) => void) | null = null;
+  /** Called when a draft's first tap has created the real stocktake. */
+  onSaved: ((draft: string, stocktakeId: string) => void) | null = null;
   #running = false;
   #timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -60,6 +66,15 @@ class SyncQueue {
     }
   }
 
+  /** Moves taps queued against a draft onto the stocktake the server created for it. */
+  adopt(draft: string, stocktakeId: string) {
+    for (const key of Object.keys(this.pending).filter((k) => k.startsWith(`${draft}|`))) {
+      const total = this.pending[key];
+      this.#change(key, -total);
+      this.#change(keyOf(stocktakeId, key.slice(draft.length + 1)), total);
+    }
+  }
+
   async flush() {
     if (this.#running) return;
     this.#running = true;
@@ -70,6 +85,14 @@ class SyncQueue {
         const total = this.pending[key];
         const delta = Math.max(-MAX_STEP, Math.min(MAX_STEP, total));
         try {
+          if (isDraft(stocktakeId)) {
+            // First real tap on a new stocktake: create (or reopen) today's, then send the taps there.
+            const saved = await api().open(stocktakeId.slice('draft:'.length));
+            this.adopt(stocktakeId, saved.id);
+            this.offline = false;
+            this.onSaved?.(stocktakeId, saved.id);
+            continue;
+          }
           const { count } = await api().adjust(stocktakeId, itemId, delta);
           this.#change(key, -delta);
           this.offline = false;

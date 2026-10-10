@@ -45,8 +45,11 @@ Club pool card last.
 ### Team `/:slug`
 - Header band: mascot, team name, and the grade with its dot (no colour name).
 - **Stocktake** dropdown: the team's stocktakes, named by NZ date (e.g. "9 Oct 2026"), newest first, with
-  **New (today)** as the last option. Opening the page selects the newest; if the team has none, today's is created.
-  Choosing New creates today's stocktake, or reopens it if one is already dated today (at most one per team per day).
+  **New (today)** as the last option. Opening the page selects the newest. If the team has none, or New is chosen and
+  there is nothing dated today, the page shows an unsaved draft of today's stocktake (the spec lines at 0) and the
+  option reads "New (today) — not saved yet". Nothing is written until a count is entered or an item is added: the
+  first + (queued like any tap, so it works offline) or + Add item creates today's stocktake. Choosing New when one is
+  already dated today opens it (at most one per team per day).
 - A summary line with the total: "23 items counted".
 - Lines grouped by category in catalogue order. Each line: name and `[−] count [+]`. The Kit Spec quantity
   is not shown and there is no complete/short/over marking. Added lines are tagged "Added".

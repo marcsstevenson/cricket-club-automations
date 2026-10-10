@@ -7,7 +7,7 @@
   import { api } from '$lib/api';
   import Dot from '$lib/Dot.svelte';
   import Mascot from '$lib/Mascot.svelte';
-  import { queue } from '$lib/sync.svelte';
+  import { isDraft, queue } from '$lib/sync.svelte';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
@@ -31,6 +31,7 @@
   );
   const have = $derived(new Set(stocktake.lines.map((l) => l.itemId)));
   const saving = $derived(queue.hasPending(stocktake.id));
+  const draft = $derived(isDraft(stocktake.id));
 
   const setLine = (itemId: string, patch: Partial<Line>) => {
     stocktake = { ...stocktake, lines: stocktake.lines.map((l) => (l.itemId === itemId ? { ...l, ...patch } : l)) };
@@ -41,14 +42,22 @@
     queue.onCount = (stId, itemId, count) => {
       if (stId === id) setLine(itemId, { count });
     };
-    return () => (queue.onCount = null);
+    queue.onSaved = (d, savedId) => {
+      if (d === id) void show(savedId);
+    };
+    return () => {
+      queue.onCount = null;
+      queue.onSaved = null;
+    };
   });
+
+  const show = (id: string) => goto(`?s=${id}`, { replaceState: true, invalidateAll: true, noScroll: true });
 
   // Pick up other people's counts when the page comes back into view.
   $effect(() => {
     const id = stocktake.id;
     const onShow = async () => {
-      if (document.visibilityState !== 'visible' || queue.hasPending(id)) return;
+      if (document.visibilityState !== 'visible' || isDraft(id) || queue.hasPending(id)) return;
       try {
         const fresh = await api().stocktake(id);
         if (fresh.id === stocktake.id && !queue.hasPending(id)) stocktake = fresh;
@@ -69,8 +78,8 @@
     message = '';
     switching = true;
     try {
-      const id = value === 'new' ? (await api().open(team.slug)).id : value;
-      await goto(`?s=${id}`, { replaceState: true, invalidateAll: true, noScroll: true });
+      // New only shows a draft (or today's, if it exists); nothing is saved until a count is entered.
+      await show(value);
     } catch (e) {
       message = e instanceof Error ? e.message : 'Could not open that stocktake.';
     } finally {
@@ -81,6 +90,14 @@
   async function add(itemId: string) {
     message = '';
     try {
+      if (draft) {
+        // Adding a line saves the draft first.
+        const saved = await api().open(team.slug);
+        queue.adopt(stocktake.id, saved.id);
+        await api().addLine(saved.id, itemId);
+        await show(saved.id);
+        return true;
+      }
       const line = await api().addLine(stocktake.id, itemId);
       const lines = [...stocktake.lines.filter((l) => l.itemId !== itemId), line];
       lines.sort((a, b) => (ORDER.get(a.itemId) ?? Infinity) - (ORDER.get(b.itemId) ?? Infinity));
@@ -115,9 +132,9 @@
 
 <div class="card toolbar">
   <label class="field" for="stocktake">Stocktake</label>
-  <select id="stocktake" value={stocktake.id} disabled={switching} onchange={(e) => choose(e.currentTarget.value)}>
+  <select id="stocktake" value={draft ? 'new' : stocktake.id} disabled={switching} onchange={(e) => choose(e.currentTarget.value)}>
     {#each data.page.stocktakes as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
-    <option value="new">New (today)</option>
+    <option value="new">{draft ? 'New (today) — not saved yet' : 'New (today)'}</option>
   </select>
   <p class="progress" aria-live="polite">{progressText(counted)}</p>
   <p class="sync" class:offline={queue.offline && saving} role="status">

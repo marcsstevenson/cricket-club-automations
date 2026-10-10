@@ -17,9 +17,19 @@ test('home lists the teams and the club pool', async ({ page }) => {
   await expect(page.locator('.team-band').getByRole('img', { name: 'yellow dot' })).toBeVisible();
 });
 
+test('opening a team saves nothing until a count is entered', async ({ page }) => {
+  await page.goto('/lions');
+  await expect(page.locator('#stocktake option:checked')).toHaveText('New (today) — not saved yet');
+  await expect(line(page, 'Black rubber bases').locator('.qty')).toHaveText('0');
+  await page.reload();
+  await expect(page.locator('#stocktake option:checked')).toHaveText('New (today) — not saved yet');
+  const res = await page.request.get('/api/teams/lions');
+  expect((await res.json()).stocktakes).toEqual([]);
+});
+
 test('a team starts with its Kit Spec at 0 and counts with + and −', async ({ page }) => {
   await page.goto('/penguins');
-  await expect(page.locator('#stocktake option:checked')).toHaveText(todayLabel);
+  await expect(page.locator('#stocktake option:checked')).toHaveText('New (today) — not saved yet');
   await expect(page.locator('.progress')).toHaveText('0 items counted');
   await expect(page.getByRole('heading', { name: 'Senior kit' })).toHaveCount(0);
 
@@ -28,6 +38,9 @@ test('a team starts with its Kit Spec at 0 and counts with + and −', async ({ 
   await expect(page.getByText(/lines complete|items short|✓/)).toHaveCount(0);
   await bases.getByRole('button', { name: 'One more Black rubber bases' }).click();
   await expect(bases.locator('.qty')).toHaveText('1');
+  // The first count saves today's stocktake.
+  await expect(page).toHaveURL(/\?s=[a-f0-9]{32}/);
+  await expect(page.locator('#stocktake option:checked')).toHaveText(todayLabel);
 
   const tees = line(page, 'Yellow batting tee');
   for (let i = 0; i < 6; i++) await tees.getByRole('button', { name: 'One more Yellow batting tee' }).click();
@@ -63,6 +76,16 @@ test('items can be added from the modal and removed while at 0', async ({ page }
   await expect(line(page, 'Wooden bat S2 (softball)')).toHaveCount(0);
 });
 
+test('adding an item to a new stocktake saves it', async ({ page }) => {
+  await page.goto('/tigers');
+  await expect(page.locator('#stocktake option:checked')).toHaveText('New (today) — not saved yet');
+  await page.getByRole('button', { name: '+ Add item' }).click();
+  await page.getByRole('dialog', { name: 'Add an item' }).getByRole('button', { name: 'Snapback stumps' }).click();
+  await expect(page).toHaveURL(/\?s=[a-f0-9]{32}/);
+  await expect(page.locator('#stocktake option:checked')).toHaveText(todayLabel);
+  await expect(line(page, 'Snapback stumps')).toContainText('Added');
+});
+
 test('New (today) reopens today’s stocktake', async ({ page }) => {
   await page.goto('/penguins');
   await page.locator('#stocktake').selectOption('new');
@@ -82,6 +105,7 @@ test('taps made offline sync when the signal returns', async ({ page, context })
   await expect(helmets.locator('.qty')).toHaveText('2');
   await context.setOffline(false);
   await expect(page.getByText('All changes saved')).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/\?s=[a-f0-9]{32}/);
   await page.reload();
   await expect(line(page, 'J [53-54, age 7-10]').locator('.qty')).toHaveText('2');
 });
