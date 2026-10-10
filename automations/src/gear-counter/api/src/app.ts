@@ -6,18 +6,21 @@ import type { TeamPage } from '../../shared/src/types';
 import { registerAdmin } from './admin';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
-import { addLine, adjustCount, getStocktake, listStocktakes, openStocktake, removeLine } from './repo';
+import { adjust, listItem, recent, setCount, teamLevels, unlistItem } from './levels';
 import { getTeam, listTeams, summary } from './teams';
+import { parseNote, parseWho } from './who';
 
-const ID = /^[a-f0-9]{32}$/;
 const ITEM = /^[A-Z0-9-]{1,20}$/;
 const Adjust = v.object({ delta: v.pipe(v.number(), v.integer(), v.minValue(-20), v.maxValue(20), v.check((n) => n !== 0)) });
+const Count = v.object({ level: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(999)) });
 
-function lineParams(stocktakeId: string, itemId: string) {
-  if (!ID.test(stocktakeId)) throw new ApiError(404, 'stocktake_not_found', 'Stocktake not found.');
-  if (!ITEM.test(itemId)) throw new ApiError(404, 'item_not_found', 'Unknown item.');
-  return { stocktakeId, itemId };
+function item(id: string) {
+  if (!ITEM.test(id)) throw new ApiError(404, 'item_not_found', 'Unknown item.');
+  return id;
 }
+
+const body = async (c: { req: { json: () => Promise<unknown> } }) =>
+  ((await c.req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
 
 export function createApp(deps: Deps) {
   const app = new Hono<AppEnv>().basePath('/api');
@@ -36,38 +39,39 @@ export function createApp(deps: Deps) {
 
   app.get('/teams/:slug', async (c) => {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
-    const body: TeamPage = { team: summary(t), spec: t.spec, today: nzDate(deps.now()), stocktakes: await listStocktakes(c.env.DB, t.slug) };
-    return c.json(body);
+    const page: TeamPage = { team: summary(t), spec: t.spec, levels: await teamLevels(c.env.DB, t), recent: await recent(c.env.DB, t.slug) };
+    return c.json(page);
   });
 
-  app.post('/teams/:slug/stocktakes', async (c) => {
+  app.post('/teams/:slug/items/:item/adjust', async (c) => {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
-    const now = deps.now();
-    return c.json(await openStocktake(c.env.DB, t, nzDate(now), deps.id(), now));
-  });
-
-  app.get('/stocktakes/:id', async (c) => {
-    const id = c.req.param('id');
-    if (!ID.test(id)) throw new ApiError(404, 'stocktake_not_found', 'Stocktake not found.');
-    return c.json(await getStocktake(c.env.DB, id));
-  });
-
-  app.post('/stocktakes/:id/lines/:item/adjust', async (c) => {
-    const { stocktakeId, itemId } = lineParams(c.req.param('id'), c.req.param('item'));
-    const parsed = v.safeParse(Adjust, await c.req.json().catch(() => null));
+    const b = await body(c);
+    const parsed = v.safeParse(Adjust, b);
     if (!parsed.success) throw new ApiError(400, 'invalid_delta', 'delta must be a whole number from -20 to 20, not 0.');
-    return c.json({ count: await adjustCount(c.env.DB, stocktakeId, itemId, parsed.output.delta, deps.now()) });
+    const who = parseWho(b.who);
+    return c.json({ level: await adjust(c.env.DB, t, item(c.req.param('item')), parsed.output.delta, who, deps.now()) });
   });
 
-  app.put('/stocktakes/:id/lines/:item', async (c) => {
-    const { stocktakeId, itemId } = lineParams(c.req.param('id'), c.req.param('item'));
-    return c.json(await addLine(c.env.DB, stocktakeId, itemId, deps.now()));
+  app.put('/teams/:slug/items/:item', async (c) => {
+    const t = await getTeam(c.env.DB, c.req.param('slug'));
+    parseWho((await body(c)).who);
+    return c.json(await listItem(c.env.DB, t, item(c.req.param('item')), deps.now()));
   });
 
-  app.delete('/stocktakes/:id/lines/:item', async (c) => {
-    const { stocktakeId, itemId } = lineParams(c.req.param('id'), c.req.param('item'));
-    await removeLine(c.env.DB, stocktakeId, itemId);
+  app.delete('/teams/:slug/items/:item', async (c) => {
+    const t = await getTeam(c.env.DB, c.req.param('slug'));
+    await unlistItem(c.env.DB, t, item(c.req.param('item')));
     return c.body(null, 204);
+  });
+
+  app.post('/teams/:slug/items/:item/count', async (c) => {
+    const t = await getTeam(c.env.DB, c.req.param('slug'));
+    const b = await body(c);
+    const parsed = v.safeParse(Count, b);
+    if (!parsed.success) throw new ApiError(400, 'invalid_level', 'level must be a whole number from 0 to 999.');
+    const who = parseWho(b.who);
+    const note = parseNote(b.note);
+    return c.json({ level: await setCount(c.env.DB, t, item(c.req.param('item')), parsed.output.level, who, note, deps.now()) });
   });
 
   registerAdmin(app);
