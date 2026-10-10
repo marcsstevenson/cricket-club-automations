@@ -82,3 +82,8 @@ select, input[type='search'], input[type='text'], input[type='password'], input[
 .log-note { color: var(--pcc-grey-600); }
 .who-line { margin: 4px 0 0; color: #fff; font-size: 0.9rem; }
 .who-line button { background: none; border: 0; padding: 0; color: var(--pcc-teal-400); font: inherit; text-decoration: underline; cursor: pointer; }
+.tag.retired { color: var(--pcc-grey-600); }
+.inline-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; grid-column: 1 / -1; }
+.inline-edit input, .inline-edit select { flex: 1 1 12rem; width: auto; }
+.qty-input { width: 5rem; text-align: center; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

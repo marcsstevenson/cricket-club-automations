@@ -1,6 +1,7 @@
 <script lang="ts">
   import { dateLabel, nzDate } from '$shared/dates';
-  import { DOT_COLOURS, MASCOTS, specColumns } from '$shared/data';
+  import { DOT_COLOURS, MASCOTS } from '$shared/data';
+  import { api } from '$lib/api';
   import type { AdminTeam, NewTeam, TeamKind } from '$shared/types';
   import { admin, lock, unlock } from '$lib/admin.svelte';
   import Dot from '$lib/Dot.svelte';
@@ -40,7 +41,10 @@
     return null;
   }
 
+  let specColumns = $state<string[]>([]);
+
   async function load() {
+    api().catalogue().then((c) => (specColumns = c.specs), () => {});
     const res = await call('/teams');
     if (res) teams = await res.json();
   }
@@ -119,6 +123,7 @@
   </form>
 {:else}
   <div class="card">
+    <p><a href="/admin/items">Edit items, categories and Kit Spec →</a></p>
     <h2>Downloads</h2>
     <p class="note">Current levels, and every logged change.</p>
     <p><button type="button" class="btn" onclick={() => download('/export/club.csv')}>Club inventory (CSV)</button></p>

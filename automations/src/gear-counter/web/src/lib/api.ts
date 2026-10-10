@@ -1,4 +1,4 @@
-import type { ApiErrorBody, LevelLine, TeamPage, TeamSummary } from '$shared/types';
+import type { ApiErrorBody, Catalogue, LevelLine, TeamPage, TeamSummary } from '$shared/types';
 
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string, public body: ApiErrorBody | null) {
@@ -24,6 +24,7 @@ export function api(f: typeof fetch = fetch) {
   const item = (team: string, id: string) => `/teams/${encodeURIComponent(team)}/items/${encodeURIComponent(id)}`;
   const json = (method: string, body: unknown): RequestInit => ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   return {
+    catalogue: () => req<Catalogue>('/catalogue'),
     teams: () => req<TeamSummary[]>('/teams'),
     team: (slug: string) => req<TeamPage>(`/teams/${encodeURIComponent(slug)}`),
     adjust: (team: string, id: string, delta: number, who: string) => req<{ level: number }>(`${item(team, id)}/adjust`, json('POST', { delta, who })),

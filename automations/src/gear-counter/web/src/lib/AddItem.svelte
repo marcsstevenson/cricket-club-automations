@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { categories, items } from '$shared/data';
+  import type { Catalogue } from '$shared/types';
 
-  let { have, onadd }: { have: Set<string>; onadd: (itemId: string) => Promise<boolean> } = $props();
+  let { catalogue, have, onadd }: { catalogue: Catalogue; have: Set<string>; onadd: (itemId: string) => Promise<boolean> } = $props();
 
   let dialog = $state<HTMLDialogElement>();
   let search = $state('');
@@ -9,8 +9,8 @@
 
   const groups = $derived.by(() => {
     const q = search.trim().toLowerCase();
-    const left = items.filter((i) => !have.has(i.id) && (!q || `${i.category} ${i.name}`.toLowerCase().includes(q)));
-    return categories.map((c) => ({ category: c, items: left.filter((i) => i.category === c) })).filter((g) => g.items.length);
+    const left = catalogue.items.filter((i) => !have.has(i.id) && (!q || `${i.category} ${i.name}`.toLowerCase().includes(q)));
+    return catalogue.categories.map((c) => ({ category: c.name, items: left.filter((i) => i.categoryId === c.id) })).filter((g) => g.items.length);
   });
 
   function show() {

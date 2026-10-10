@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { items } from '$shared/data';
   import { levelsText } from '$shared/levels';
   import type { LevelLine } from '$shared/types';
   import AddItem from '$lib/AddItem.svelte';
@@ -15,7 +14,7 @@
 
   let { data }: PageProps = $props();
 
-  const ORDER = new Map(items.map((i, n) => [i.id, n]));
+  const ORDER = $derived(new Map(data.catalogue.items.map((i, n) => [i.id, n])));
   const team = $derived(data.page.team);
   let levels = $derived<LevelLine[]>(data.page.levels);
   let recent = $derived(data.page.recent);
@@ -141,10 +140,10 @@
         <li class="line" data-item={l.itemId}>
           <div class="line-text">
             <span class="line-name">{l.name}</span>
-            {#if l.added}<span class="tag">Added</span>{/if}
+            {#if l.retired}<span class="tag retired">Retired</span>{:else if l.added}<span class="tag">Added</span>{/if}
           </div>
           <div class="stepper">
-            {#if l.added && l.level === 0 && !pending}
+            {#if !l.pinned && l.level === 0 && !pending}
               <button type="button" class="step remove" aria-label="Remove {l.name}" onclick={() => unlist(l)}>✕</button>
             {:else}
               <button type="button" class="step" aria-label="One less {l.name}" disabled={l.level === 0} onclick={() => tap(l, -1)}>−</button>
@@ -159,7 +158,7 @@
   </section>
 {/each}
 
-<div class="add-row"><AddItem {have} onadd={add} /></div>
+<div class="add-row"><AddItem catalogue={data.catalogue} {have} onadd={add} /></div>
 
 <RecentChanges entries={recent} />
 
