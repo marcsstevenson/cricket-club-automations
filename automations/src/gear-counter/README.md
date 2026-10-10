@@ -1,6 +1,6 @@
 # PCC Gear Counter
 
-Stocktake each team's kit bag (and the club pool) against the Kit Spec for its grade. Spec: `docs/spec.md`.
+Current gear levels for each team's kit bag and each gear pool, with a log of every change. Spec: `docs/spec.md`.
 Same stack as `../game-day-form`: Cloudflare Worker (Hono API + D1) serving a SvelteKit static SPA.
 
 ## Local development
@@ -34,7 +34,7 @@ Existing stocktakes keep the quantities they started with.
 
 ## Teams, pools and admin
 
-Teams and pools are in D1 (`teams`), seeded by `migrations/0002_teams.sql`. Add, hide and export them at
+Teams and pools are in D1 (`teams`); each listed item's current level is in `levels` and every change is in `log` (see `docs/spec.md` §6). Add, hide and export them at
 `/admin` (not linked anywhere), which needs the `ADMIN_PASSCODE` Worker secret:
 
 ```bash

@@ -25,7 +25,7 @@
     <ul class="log">
       {#each entries as e (e.id)}
         <li>
-          <strong>{e.who}</strong> · <time datetime={e.at}>{whenLabel(e.at)}</time> · {what(e)}{#if e.note}<span class="log-note"> · “{e.note}”</span>{/if}
+          <strong>{e.who}</strong> · <time datetime={e.at}>{whenLabel(e.at)}</time> · {what(e)}{#if e.note}<span class="log-note">{` · “${e.note}”`}</span>{/if}
         </li>
       {/each}
     </ul>
