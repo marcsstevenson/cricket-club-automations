@@ -99,7 +99,8 @@ Linked from `/admin` ("Edit items") and behind the same passcode.
 - **Kit Spec**: choose a grade column; its items are listed by category with a quantity box each (0–99, blank = 0);
   **Save** replaces that column's quantities. **Add a grade**, **Rename** (teams using it follow), and **Delete**
   (only when no team uses it). Retired items are not shown in the grid.
-- Names: categories, items and grades are 1–60 characters after trimming and unique ignoring case within their kind.
+- Names are 1–60 characters after trimming and unique ignoring case: categories and grades across the catalogue, items
+  within their category (several categories have items called "J" or "Y").
 - Catalogue changes are not logged in the gear log. Teams pick up new Kit Spec items and pools pick up new items
   (at 0) the next time their page or CSV is loaded.
 
@@ -192,7 +193,7 @@ when wrong or missing, 503 when unset. Rate limited per IP (30 per minute) befor
 
 ```sql
 categories(id INTEGER PK, name UNIQUE NOCASE, sort)
-items(id TEXT PK, category_id → categories, name UNIQUE NOCASE, sort, retired 0|1, created_at)
+items(id TEXT PK, category_id → categories, name, sort, retired 0|1, created_at, UNIQUE(category_id, name NOCASE))
 kit_specs(id INTEGER PK, name UNIQUE NOCASE, sort)
 kit_spec_items(spec_id → kit_specs, item_id → items, qty 1–99, PRIMARY KEY(spec_id, item_id))
 teams(slug PK, name, kind 'team'|'pool', mascot, grade, spec (kit_specs.name), dot, sort, hidden 0|1, created_at)

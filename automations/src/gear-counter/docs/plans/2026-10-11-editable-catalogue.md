@@ -12,7 +12,7 @@
 
 ## Global Constraints
 - Working dir `automations/src/gear-counter`. Item ids unchanged; new ids `X-` + 6 uppercase hex (matches `/^[A-Z0-9-]{1,20}$/`).
-- Names 1–60 chars trimmed, unique ignoring case per kind (categories, items, kit specs). Kit Spec qty integer 0–99 (0 = remove row).
+- Names 1–60 chars trimmed, unique ignoring case: categories and kit specs globally, items within their category. Kit Spec qty integer 0–99 (0 = remove row).
 - Always listed (`pinned`): team → item in its Kit Spec with qty > 0 and not retired; pool → item not retired.
 - Unlist allowed only at level 0 and when not pinned. Retired items can't be added (409); they can still be moved/adjusted where listed.
 - Catalogue order: `categories.sort`, then `items.sort`. Sorts are spaced by 10 on insert; moves swap with the neighbour.
