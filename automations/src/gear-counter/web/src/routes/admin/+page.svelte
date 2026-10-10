@@ -14,7 +14,11 @@
   let busy = $state(false);
 
   // Add forms: the web address follows the name until it is edited by hand.
-  const blank = (kind: TeamKind) => ({ kind, name: '', slug: '', slugEdited: false, spec: '', grade: '', dot: '', mascot: '' });
+  const blank = (kind: TeamKind) => ({ kind, name: '', slug: '', slugEdited: false, spec: '', grade: '', dot: '', mascot: '', description: '' });
+
+  // Inline pool description edit.
+  let describing = $state<string | null>(null);
+  let description = $state('');
   let team = $state(blank('team'));
   let pool = $state(blank('pool'));
   const slugify = (name: string) =>
@@ -79,20 +83,23 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  async function setHidden(t: AdminTeam, hidden: boolean) {
-    const res = await call(`/teams/${t.slug}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hidden }) });
-    if (res) {
-      const updated: AdminTeam = await res.json();
-      teams = teams.map((x) => (x.slug === updated.slug ? updated : x));
-      notice = `${t.name} is ${hidden ? 'hidden' : 'visible again'}.`;
-    }
+  async function patch(t: AdminTeam, change: { hidden?: boolean; description?: string }, done: string) {
+    notice = '';
+    const res = await call(`/teams/${t.slug}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(change) });
+    if (!res) return false;
+    const updated: AdminTeam = await res.json();
+    teams = teams.map((x) => (x.slug === updated.slug ? updated : x));
+    notice = done;
+    return true;
   }
+
+  const setHidden = (t: AdminTeam, hidden: boolean) => patch(t, { hidden }, `${t.name} is ${hidden ? 'hidden' : 'visible again'}.`);
 
   async function add(form: typeof team) {
     notice = '';
     const body: NewTeam =
       form.kind === 'pool'
-        ? { kind: 'pool', name: form.name, slug: form.slug }
+        ? { kind: 'pool', name: form.name, slug: form.slug, description: form.description || null }
         : { kind: 'team', name: form.name, slug: form.slug, spec: form.spec, grade: form.grade || null, dot: form.dot || null, mascot: form.mascot };
     busy = true;
     try {
@@ -108,7 +115,8 @@
     }
   }
 
-  const kindText = (t: AdminTeam) => (t.kind === 'pool' ? 'Pool' : t.grade === t.spec ? t.grade : `${t.grade} (${t.spec})`);
+  const kindText = (t: AdminTeam) =>
+    t.kind === 'pool' ? `Pool — ${t.description ?? 'Spare gear in storage'}` : t.grade === t.spec ? t.grade : `${t.grade} (${t.spec})`;
 </script>
 
 <svelte:head><title>Admin · Gear counter</title><meta name="robots" content="noindex" /></svelte:head>
@@ -147,8 +155,19 @@
         <div class="row-actions">
           <button type="button" class="small" aria-label="Download {t.name} levels CSV" onclick={() => download(`/export/teams/${t.slug}.csv`)}>Levels</button>
           <button type="button" class="small" aria-label="Download {t.name} log CSV" disabled={!t.lastChange} onclick={() => download(`/export/log.csv?team=${t.slug}`)}>Log</button>
+          {#if t.kind === 'pool'}
+            <button type="button" class="small" aria-label="Edit description for {t.name}" onclick={() => { describing = t.slug; description = t.description ?? ''; }}>Describe</button>
+          {/if}
           <button type="button" class="small" onclick={() => setHidden(t, !t.hidden)}>{t.hidden ? 'Unhide' : 'Hide'}</button>
         </div>
+        {#if describing === t.slug}
+          <form class="inline-edit" onsubmit={async (e) => { e.preventDefault(); if (await patch(t, { description }, `Saved the ${t.name} description.`)) describing = null; }}>
+            <label class="visually-hidden" for="desc-{t.slug}">Description</label>
+            <input id="desc-{t.slug}" type="text" maxlength="80" placeholder="Spare gear in storage" bind:value={description} />
+            <button class="small">Save</button>
+            <button type="button" class="small" onclick={() => (describing = null)}>Cancel</button>
+          </form>
+        {/if}
       </li>
     {/each}
   </ul>
@@ -186,6 +205,8 @@
     <input id="pool-name" type="text" maxlength="60" required bind:value={pool.name} oninput={() => { if (!pool.slugEdited) pool.slug = slugify(pool.name); }} />
     <label class="field" for="pool-slug">Web address</label>
     <input id="pool-slug" type="text" maxlength="30" required bind:value={pool.slug} oninput={() => (pool.slugEdited = true)} />
+    <label class="field" for="pool-description">Description (optional)</label>
+    <input id="pool-description" type="text" maxlength="80" placeholder="Spare gear in storage" bind:value={pool.description} />
     <p><button class="btn" disabled={busy}>Add pool</button></p>
   </form>
 {/if}

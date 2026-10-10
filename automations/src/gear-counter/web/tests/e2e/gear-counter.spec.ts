@@ -214,6 +214,7 @@ test('typed Kit Spec quantities survive other edits on the Items page', async ({
   await page.goto('/admin');
   await page.getByLabel('Admin passcode').fill('e2e-passcode');
   await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('[data-team="pumas"]')).toBeVisible(); // passcode accepted and saved
   await page.goto('/admin/items');
   const year4 = await page.locator('#spec-pick option', { hasText: /^Year 4 \(/ }).getAttribute('value');
   await page.locator('#spec-pick').selectOption(year4!);
@@ -243,6 +244,21 @@ test('a held retired item keeps its place when another item is added', async ({ 
   const names = await page.locator('li.line .line-name').allTextContents();
   expect(names.indexOf('Black rubber bases')).toBeLessThan(names.indexOf('Snapback stumps')); // catalogue order kept
   await page.request.patch('/api/admin/items/STU-03', { headers, data: { retired: false } });
+});
+
+test('a pool description shows on the home page and the pool page', async ({ page }) => {
+  await page.goto('/admin');
+  await page.getByLabel('Admin passcode').fill('e2e-passcode');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  const row = page.locator('[data-team="pool"]');
+  await row.getByRole('button', { name: 'Edit description for Club pool' }).click();
+  await row.getByLabel('Description', { exact: true }).fill('Shed at the club rooms');
+  await row.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toHaveText('Saved the Club pool description.');
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /Club pool/ })).toContainText('Shed at the club rooms');
+  await page.goto('/pool');
+  await expect(page.locator('.team-band .team-meta')).toHaveText('Shed at the club rooms');
 });
 
 test('an unknown team shows Team not found', async ({ page }) => {

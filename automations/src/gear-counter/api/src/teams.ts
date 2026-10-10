@@ -13,9 +13,25 @@ export interface TeamRow {
   dot: string | null;
   sort: number;
   hidden: number;
+  description: string | null;
 }
 
-export const summary = (r: TeamRow): TeamSummary => ({ slug: r.slug, name: r.name, kind: r.kind, mascot: r.mascot, grade: r.grade, dot: r.dot });
+export const summary = (r: TeamRow): TeamSummary => ({
+  slug: r.slug,
+  name: r.name,
+  kind: r.kind,
+  mascot: r.mascot,
+  grade: r.grade,
+  dot: r.dot,
+  description: r.description,
+});
+
+/** A pool description: trimmed, up to 80 characters; empty or null clears it. */
+export function parseDescription(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== 'string' || v.trim().length > 80) throw bad('The description must be text of up to 80 characters.');
+  return v.trim() || null;
+}
 
 // Teams first, then pools; each in sort order.
 const ORDER = "ORDER BY kind = 'pool', sort, name";
@@ -72,7 +88,8 @@ export function parseNewTeam(body: unknown, specNames: string[]): Required<NewTe
   }
   const mascot = text(b.mascot);
   if (mascot && !MASCOTS.includes(mascot)) throw bad('Unknown mascot.');
-  if (kind === 'pool') return { kind, name, slug, spec: null, grade: null, dot: null, mascot };
+  if (kind === 'pool') return { kind, name, slug, spec: null, grade: null, dot: null, mascot, description: parseDescription(b.description) };
+  if (b.description !== undefined && b.description !== null && b.description !== '') throw bad('Only pools have a description.');
   const spec = text(b.spec);
   const column = specNames.find((n) => n.toLowerCase() === spec.toLowerCase());
   if (!column) throw bad('Choose a Kit Spec column.');
@@ -80,7 +97,7 @@ export function parseNewTeam(body: unknown, specNames: string[]): Required<NewTe
   if (grade.length > 40) throw bad('The grade must be up to 40 characters.');
   const dot = text(b.dot).toLowerCase() || null;
   if (dot && !DOT_COLOURS[dot]) throw bad('Unknown dot colour.');
-  return { kind, name, slug, spec: column, grade, dot, mascot };
+  return { kind, name, slug, spec: column, grade, dot, mascot, description: null };
 }
 
 export async function addTeam(db: D1Database, t: Required<NewTeam>, cat: Cat, now: Date): Promise<AdminTeam> {
@@ -94,10 +111,10 @@ export async function addTeam(db: D1Database, t: Required<NewTeam>, cat: Cat, no
   // New teams go after the existing teams, new pools after the existing pools.
   await db
     .prepare(
-      `INSERT INTO teams (slug, name, kind, mascot, grade, spec, dot, sort, hidden, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, (SELECT COALESCE(MAX(sort), 0) + 10 FROM teams WHERE kind = ?3), 0, ?8)`,
+      `INSERT INTO teams (slug, name, kind, mascot, grade, spec, dot, sort, hidden, created_at, description)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, (SELECT COALESCE(MAX(sort), 0) + 10 FROM teams WHERE kind = ?3), 0, ?8, ?9)`,
     )
-    .bind(t.slug, t.name, t.kind, t.mascot, t.grade, t.spec, t.dot, now.toISOString())
+    .bind(t.slug, t.name, t.kind, t.mascot, t.grade, t.spec, t.dot, now.toISOString(), t.description)
     .run();
   // Its Kit Spec items (team) or every item (pool) are listed at 0.
   const at = now.toISOString();
@@ -109,8 +126,15 @@ export async function addTeam(db: D1Database, t: Required<NewTeam>, cat: Cat, no
   return (await adminTeams(db)).find((x) => x.slug === t.slug)!;
 }
 
-export async function setHidden(db: D1Database, slug: string, hidden: boolean): Promise<AdminTeam> {
-  const { meta } = await db.prepare('UPDATE teams SET hidden = ? WHERE slug = ?').bind(hidden ? 1 : 0, slug).run();
-  if (!meta.changes) throw new ApiError(404, 'team_not_found', 'Team not found.');
-  return (await adminTeams(db)).find((x) => x.slug === slug)!;
+/** PATCH /admin/teams/:slug: `hidden` and/or (pools only) `description`. */
+export async function updateTeam(db: D1Database, slug: string, body: unknown): Promise<AdminTeam> {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  if (b.hidden === undefined && b.description === undefined) throw new ApiError(400, 'invalid_body', 'Send hidden and/or description.');
+  if (b.hidden !== undefined && typeof b.hidden !== 'boolean') throw new ApiError(400, 'invalid_body', 'hidden must be true or false.');
+  const team = await getAnyTeam(db, slug);
+  const description = b.description === undefined ? team.description : parseDescription(b.description);
+  if (b.description !== undefined && description !== null && team.kind !== 'pool') throw bad('Only pools have a description.');
+  const hidden = b.hidden === undefined ? team.hidden : b.hidden ? 1 : 0;
+  await db.prepare('UPDATE teams SET hidden = ?, description = ? WHERE slug = ?').bind(hidden, description, team.slug).run();
+  return (await adminTeams(db)).find((x) => x.slug === team.slug)!;
 }

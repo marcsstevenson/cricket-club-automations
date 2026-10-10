@@ -32,7 +32,8 @@ quantities. Since then the admin page is the only source; the workbook import is
 D1 `teams` (§6), managed on the admin page; seeded with the 27 game-day teams and the **Club pool**.
 
 - A **team** has a Kit Spec column; its Kit Spec items (quantity > 0, not retired) are always listed.
-- A **pool** has no Kit Spec column; every item that is not retired is always listed.
+- A **pool** has no Kit Spec column; every item that is not retired is always listed. A pool may have a
+  **description** (up to 80 characters) shown instead of "Spare gear in storage".
 - Other items are listed while a team/pool holds them or after **+ Add item**; at level 0 they can be removed (✕).
   A retired item, or one dropped from the team's Kit Spec, stays listed wherever it is held until it reaches 0.
 - A team with no dot colour shows a dashed empty dot; no mascot shows the ball.
@@ -80,7 +81,8 @@ go straight in. A 401 (e.g. after the passcode changes) forgets it and asks agai
 - **Add a team**: name, web address (filled in from the name, editable), Kit Spec column, grade shown on the site
   (defaults to the Kit Spec column), dot colour (known colours or none), mascot (images in `web/static/mascots`, or
   the ball). New teams sort after existing teams; their Kit Spec items are listed at 0.
-- **Add a pool**: name and web address. New pools sort after existing pools; every item is listed at 0.
+- **Add a pool**: name, web address and an optional description. Pool rows have **Describe** to edit the
+  description inline (empty = the default). New pools sort after existing pools; every item is listed at 0.
 - Hiding removes the team/pool from the home page, the Move destinations, and its page shows "Team not found"; its
   levels and log are kept, still appear in the CSVs, and come back on Unhide. There is no delete.
 

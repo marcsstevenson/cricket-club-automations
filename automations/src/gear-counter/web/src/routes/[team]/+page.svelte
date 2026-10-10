@@ -122,7 +122,7 @@
   <Mascot name={team.mascot} />
   <div>
     <h1>{team.name}</h1>
-    <p class="team-meta">{#if team.grade}<Dot colour={team.dot} size="lg" />{team.grade}{:else}Spare gear in storage{/if}</p>
+    <p class="team-meta">{#if team.grade}<Dot colour={team.dot} size="lg" />{team.grade}{:else}{team.description ?? 'Spare gear in storage'}{/if}</p>
     {#if me.name}<p class="who-line">Counting as {me.name} · <button type="button" onclick={() => (renaming = true)}>change</button></p>{/if}
   </div>
 </section>

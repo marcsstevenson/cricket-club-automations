@@ -13,7 +13,7 @@ describe('teams', () => {
   it('lists the visible teams, then pools', async () => {
     const teams = (await (await client()('/teams')).json()) as TeamSummary[];
     expect(teams).toHaveLength(28);
-    expect(teams.at(-1)).toEqual({ slug: 'pool', name: 'Club pool', kind: 'pool', mascot: '', grade: null, dot: null });
+    expect(teams.at(-1)).toEqual({ slug: 'pool', name: 'Club pool', kind: 'pool', mascot: '', grade: null, dot: null, description: null });
     expect(teams.find((t) => t.slug === 'pumas')).toMatchObject({ kind: 'team', grade: 'Year 7', dot: 'green' });
   });
 

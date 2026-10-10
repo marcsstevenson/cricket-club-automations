@@ -10,6 +10,8 @@ export interface TeamSummary {
   grade: string | null;
   /** Dot sticker colour name, e.g. "light blue"; null when the team has none. */
   dot: string | null;
+  /** Pools only: shown instead of "Spare gear in storage"; null for the default. */
+  description: string | null;
 }
 
 /** As the admin page sees it. */
@@ -29,6 +31,7 @@ export interface NewTeam {
   grade?: string | null;
   dot?: string | null;
   mascot?: string;
+  description?: string | null;
 }
 
 export interface TeamPage {

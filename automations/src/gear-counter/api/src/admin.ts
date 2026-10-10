@@ -6,7 +6,7 @@ import { csvResponse } from './csv';
 import type { AppEnv } from './env';
 import { ApiError } from './errors';
 import { clubCsv, levelsCsv, logCsv } from './exports';
-import { addTeam, adminTeams, getAnyTeam, parseNewTeam, setHidden } from './teams';
+import { addTeam, adminTeams, getAnyTeam, parseNewTeam, updateTeam } from './teams';
 
 async function safeEqual(a: string, b: string): Promise<boolean> {
   const enc = new TextEncoder();
@@ -47,9 +47,7 @@ export function registerAdmin(app: Hono<AppEnv>) {
 
   app.patch('/admin/teams/:slug', async (c) => {
     await requireAdmin(c);
-    const body = await c.req.json().catch(() => null);
-    if (typeof body?.hidden !== 'boolean') throw new ApiError(400, 'invalid_body', 'Send { "hidden": true } or { "hidden": false }.');
-    return c.json(await setHidden(c.env.DB, c.req.param('slug'), body.hidden));
+    return c.json(await updateTeam(c.env.DB, c.req.param('slug'), await c.req.json().catch(() => null)));
   });
 
   app.get('/admin/export/club.csv', async (c) => {

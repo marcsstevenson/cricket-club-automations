@@ -201,3 +201,35 @@ describe('CSV exports', () => {
     expect((await admin(client(), '/export/teams/nobody.csv')).status).toBe(404);
   });
 });
+
+describe('pool descriptions', () => {
+  const desc = (api: Client, slug: string, description: unknown) => admin(api, `/teams/${slug}`, { method: 'PATCH', json: { description } });
+
+  it('sets, shows and clears a pool description', async () => {
+    const api = client();
+    const res = await desc(api, 'pool', '  Shed at the club rooms ');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ slug: 'pool', description: 'Shed at the club rooms', hidden: false });
+    expect(((await (await api('/teams')).json()) as TeamSummary[]).at(-1)?.description).toBe('Shed at the club rooms');
+    expect(((await (await api('/teams/pool')).json()) as TeamPage).team.description).toBe('Shed at the club rooms');
+    await desc(api, 'pool', '');
+    expect(((await (await api('/teams/pool')).json()) as TeamPage).team.description).toBeNull();
+    await desc(api, 'pool', 'Back shed');
+    await desc(api, 'pool', null);
+    expect(((await (await api('/teams/pool')).json()) as TeamPage).team.description).toBeNull();
+  });
+
+  it('adds a pool with a description', async () => {
+    const res = await admin(client(), '/teams', { method: 'POST', json: { kind: 'pool', name: 'Shed', slug: 'shed', description: 'Garage at the nets' } });
+    expect(await res.json()).toMatchObject({ slug: 'shed', description: 'Garage at the nets' });
+  });
+
+  it('refuses a description on a team, too long, or not text', async () => {
+    const api = client();
+    expect((await desc(api, 'lions', 'Kit bag')).status).toBe(400);
+    expect((await desc(api, 'pool', 'x'.repeat(81))).status).toBe(400);
+    expect((await desc(api, 'pool', 5)).status).toBe(400);
+    expect((await admin(api, '/teams/pool', { method: 'PATCH', json: {} })).status).toBe(400);
+    expect((await admin(api, '/teams', { method: 'POST', json: { kind: 'team', name: 'Seals', slug: 'seals', spec: 'Year 3', description: 'x' } })).status).toBe(400);
+  });
+});

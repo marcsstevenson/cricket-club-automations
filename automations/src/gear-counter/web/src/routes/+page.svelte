@@ -17,7 +17,7 @@
       <a class="team-card" href="/{t.slug}">
         <Mascot name={t.mascot} size="sm" />
         <span class="team-name">{t.name}</span>
-        <span class="team-meta">{#if t.grade}<Dot colour={t.dot} />{t.grade}{:else}Spare gear in storage{/if}</span>
+        <span class="team-meta">{#if t.grade}<Dot colour={t.dot} />{t.grade}{:else}{t.description ?? 'Spare gear in storage'}{/if}</span>
       </a>
     </li>
   {/each}
