@@ -95,8 +95,7 @@ export function parseNewTeam(body: unknown, specNames: string[]): Required<NewTe
   if (!column) throw bad('Choose a Kit Spec column.');
   const grade = text(b.grade) || column;
   if (grade.length > 40) throw bad('The grade must be up to 40 characters.');
-  const dot = text(b.dot).toLowerCase() || null;
-  if (dot && !DOT_COLOURS[dot]) throw bad('Unknown dot colour.');
+  const dot = parseDot(b.dot);
   return { kind, name, slug, spec: column, grade, dot, mascot, description: null };
 }
 
@@ -126,15 +125,27 @@ export async function addTeam(db: D1Database, t: Required<NewTeam>, cat: Cat, no
   return (await adminTeams(db)).find((x) => x.slug === t.slug)!;
 }
 
-/** PATCH /admin/teams/:slug: `hidden` and/or (pools only) `description`. */
+/** A dot colour: a known colour name (any case); empty or null for none. */
+export function parseDot(v: unknown): string | null {
+  if (v === null || v === undefined || v === '') return null;
+  const dot = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  if (!DOT_COLOURS[dot]) throw bad('Unknown dot colour.');
+  return dot;
+}
+
+/** PATCH /admin/teams/:slug: `hidden`, (pools only) `description`, and/or (teams only) `dot`. */
 export async function updateTeam(db: D1Database, slug: string, body: unknown): Promise<AdminTeam> {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
-  if (b.hidden === undefined && b.description === undefined) throw new ApiError(400, 'invalid_body', 'Send hidden and/or description.');
+  if (b.hidden === undefined && b.description === undefined && b.dot === undefined) {
+    throw new ApiError(400, 'invalid_body', 'Send hidden, description and/or dot.');
+  }
   if (b.hidden !== undefined && typeof b.hidden !== 'boolean') throw new ApiError(400, 'invalid_body', 'hidden must be true or false.');
   const team = await getAnyTeam(db, slug);
   const description = b.description === undefined ? team.description : parseDescription(b.description);
   if (b.description !== undefined && description !== null && team.kind !== 'pool') throw bad('Only pools have a description.');
+  const dot = b.dot === undefined ? team.dot : parseDot(b.dot);
+  if (b.dot !== undefined && dot !== null && team.kind !== 'team') throw bad('Only teams have a dot colour.');
   const hidden = b.hidden === undefined ? team.hidden : b.hidden ? 1 : 0;
-  await db.prepare('UPDATE teams SET hidden = ?, description = ? WHERE slug = ?').bind(hidden, description, team.slug).run();
+  await db.prepare('UPDATE teams SET hidden = ?, description = ?, dot = ? WHERE slug = ?').bind(hidden, description, dot, team.slug).run();
   return (await adminTeams(db)).find((x) => x.slug === team.slug)!;
 }

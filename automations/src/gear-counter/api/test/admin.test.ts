@@ -233,3 +233,29 @@ describe('pool descriptions', () => {
     expect((await admin(api, '/teams', { method: 'POST', json: { kind: 'team', name: 'Seals', slug: 'seals', spec: 'Year 3', description: 'x' } })).status).toBe(400);
   });
 });
+
+describe('team dot colours', () => {
+  const dot = (api: Client, slug: string, value: unknown) => admin(api, `/teams/${slug}`, { method: 'PATCH', json: { dot: value } });
+
+  it('sets, shows and clears a team dot colour', async () => {
+    const api = client();
+    const res = await dot(api, 'pumas', 'Light Blue');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ slug: 'pumas', dot: 'light blue' });
+    expect(((await (await api('/teams')).json()) as TeamSummary[]).find((t) => t.slug === 'pumas')?.dot).toBe('light blue');
+    expect(((await (await api('/teams/pumas')).json()) as TeamPage).team.dot).toBe('light blue');
+    await dot(api, 'pumas', '');
+    expect(((await (await api('/teams/pumas')).json()) as TeamPage).team.dot).toBeNull();
+    await dot(api, 'pumas', 'red');
+    await dot(api, 'pumas', null);
+    expect(((await (await api('/teams/pumas')).json()) as TeamPage).team.dot).toBeNull();
+  });
+
+  it('refuses unknown colours and dots on pools', async () => {
+    const api = client();
+    expect((await dot(api, 'pumas', 'purple')).status).toBe(400);
+    expect((await dot(api, 'pumas', 3)).status).toBe(400);
+    expect((await dot(api, 'pool', 'red')).status).toBe(400);
+    expect(((await (await api('/teams/pumas')).json()) as TeamPage).team.dot).toBe('green');
+  });
+});

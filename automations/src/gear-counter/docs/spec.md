@@ -82,7 +82,8 @@ go straight in. A 401 (e.g. after the passcode changes) forgets it and asks agai
   (defaults to the Kit Spec column), dot colour (known colours or none), mascot (images in `web/static/mascots`, or
   the ball). New teams sort after existing teams; their Kit Spec items are listed at 0.
 - **Add a pool**: name, web address and an optional description. Pool rows have **Describe** to edit the
-  description inline (empty = the default). New pools sort after existing pools; every item is listed at 0.
+  description inline (empty = the default).
+- Team rows have **Dot** to change the dot colour inline (known colours or none). New pools sort after existing pools; every item is listed at 0.
 - Hiding removes the team/pool from the home page, the Move destinations, and its page shows "Team not found"; its
   levels and log are kept, still appear in the CSVs, and come back on Unhide. There is no delete.
 
@@ -179,7 +180,7 @@ when wrong or missing, 503 when unset. Rate limited per IP (120 per minute, enou
 | GET | `/admin/check` | `{ ok: true }` |
 | GET | `/admin/teams` | All teams and pools with Kit Spec column, `hidden`, `lastChange` |
 | POST | `/admin/teams` | Body `{ kind, name, slug, spec?, grade?, dot?, mascot? }` → the new team; 400 / 409 |
-| PATCH | `/admin/teams/:slug` | Body `{ hidden }` → the team |
+| PATCH | `/admin/teams/:slug` | Body `{ hidden?, description? (pools), dot? (teams) }` → the team |
 | GET | `/admin/export/club.csv` | Club inventory |
 | GET | `/admin/export/teams/:slug.csv` | Levels CSV for one team |
 | GET | `/admin/export/log.csv?team=slug` | Log CSV (all, or one team) |

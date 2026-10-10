@@ -261,6 +261,22 @@ test('a pool description shows on the home page and the pool page', async ({ pag
   await expect(page.locator('.team-band .team-meta')).toHaveText('Shed at the club rooms');
 });
 
+test('a team dot colour can be changed on the admin page', async ({ page }) => {
+  await page.goto('/admin');
+  await page.getByLabel('Admin passcode').fill('e2e-passcode');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  const row = page.locator('[data-team="pumas"]');
+  await row.getByRole('button', { name: 'Change dot colour for Parklands Pumas' }).click();
+  await row.getByLabel('Dot colour', { exact: true }).selectOption('light blue');
+  await row.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toHaveText('Saved the Parklands Pumas dot colour.');
+  await expect(page.locator('[data-team="pool"]').getByRole('button', { name: /Change dot colour/ })).toHaveCount(0);
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /Parklands Pumas/ }).getByRole('img', { name: 'light blue dot' })).toBeVisible();
+  await page.goto('/pumas');
+  await expect(page.locator('.team-band').getByRole('img', { name: 'light blue dot' })).toBeVisible();
+});
+
 test('an unknown team shows Team not found', async ({ page }) => {
   await page.goto('/pumaz');
   await expect(page.getByRole('heading', { name: 'Team not found' })).toBeVisible();

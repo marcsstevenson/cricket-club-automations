@@ -16,9 +16,11 @@
   // Add forms: the web address follows the name until it is edited by hand.
   const blank = (kind: TeamKind) => ({ kind, name: '', slug: '', slugEdited: false, spec: '', grade: '', dot: '', mascot: '', description: '' });
 
-  // Inline pool description edit.
+  // Inline edits: pool description, team dot colour.
   let describing = $state<string | null>(null);
   let description = $state('');
+  let recolouring = $state<string | null>(null);
+  let dotColour = $state('');
   let team = $state(blank('team'));
   let pool = $state(blank('pool'));
   const slugify = (name: string) =>
@@ -83,7 +85,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  async function patch(t: AdminTeam, change: { hidden?: boolean; description?: string }, done: string) {
+  async function patch(t: AdminTeam, change: { hidden?: boolean; description?: string; dot?: string }, done: string) {
     notice = '';
     const res = await call(`/teams/${t.slug}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(change) });
     if (!res) return false;
@@ -157,9 +159,22 @@
           <button type="button" class="small" aria-label="Download {t.name} log CSV" disabled={!t.lastChange} onclick={() => download(`/export/log.csv?team=${t.slug}`)}>Log</button>
           {#if t.kind === 'pool'}
             <button type="button" class="small" aria-label="Edit description for {t.name}" onclick={() => { describing = t.slug; description = t.description ?? ''; }}>Describe</button>
+          {:else}
+            <button type="button" class="small" aria-label="Change dot colour for {t.name}" onclick={() => { recolouring = t.slug; dotColour = t.dot ?? ''; }}>Dot</button>
           {/if}
           <button type="button" class="small" onclick={() => setHidden(t, !t.hidden)}>{t.hidden ? 'Unhide' : 'Hide'}</button>
         </div>
+        {#if recolouring === t.slug}
+          <form class="inline-edit" onsubmit={async (e) => { e.preventDefault(); if (await patch(t, { dot: dotColour }, `Saved the ${t.name} dot colour.`)) recolouring = null; }}>
+            <label class="visually-hidden" for="dot-{t.slug}">Dot colour</label>
+            <select id="dot-{t.slug}" bind:value={dotColour}>
+              <option value="">None</option>
+              {#each Object.keys(DOT_COLOURS) as d (d)}<option value={d}>{d}</option>{/each}
+            </select>
+            <button class="small">Save</button>
+            <button type="button" class="small" onclick={() => (recolouring = null)}>Cancel</button>
+          </form>
+        {/if}
         {#if describing === t.slug}
           <form class="inline-edit" onsubmit={async (e) => { e.preventDefault(); if (await patch(t, { description }, `Saved the ${t.name} description.`)) describing = null; }}>
             <label class="visually-hidden" for="desc-{t.slug}">Description</label>
