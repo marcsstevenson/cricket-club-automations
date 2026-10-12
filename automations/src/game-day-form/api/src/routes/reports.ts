@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import * as v from 'valibot';
 import { ReportInSchema } from '../../../shared/src/types';
 import { withChecks } from '../../../shared/src/milestone-rules';
+import { saveFromText } from '../../../shared/src/text';
 import { validateReport } from '../../../shared/src/validation';
 import type { AppEnv } from '../env';
 import { ApiError, clientIp } from '../errors';
@@ -23,7 +24,7 @@ export function registerReports(app: Hono<AppEnv>) {
     const body = parsed.output;
 
     const ctx = await loadGameContext(c, c.req.param('slug'), c.req.param('gameId'));
-    if (!ctx.game.selectable) throw new ApiError(400, 'game_not_selectable', "This game hasn't been played yet.");
+    if (!ctx.game.selectable) throw new ApiError(400, 'game_not_selectable', saveFromText(ctx.game));
 
     const ruleErrors = validateReport(body);
     if (Object.keys(ruleErrors).length) {

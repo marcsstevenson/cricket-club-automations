@@ -7,13 +7,20 @@
   import { GameForm } from '$lib/form/game-form.svelte';
   import ReportForm from '$lib/form/ReportForm.svelte';
   import ReportSummary from '$lib/report/ReportSummary.svelte';
-  import type { ReportOut, TeamPage } from '$shared/api';
+  import type { GameOption, ReportOut, TeamPage } from '$shared/api';
   import { reportToForm, startForm } from '$shared/merge';
+  import { saveFromText } from '$shared/text';
   import { withChecks } from '$shared/milestone-rules';
   import type { FormState } from '$shared/types';
   import { validateReport } from '$shared/validation';
 
-  let { team, gameId }: { team: TeamPage; gameId: string } = $props();
+  let { team, game }: { team: TeamPage; game: GameOption } = $props();
+  const gameId = $derived(game.gameId);
+  // Upcoming games can be filled in to try the form, but only saved from game day (functional spec §4).
+  const saveFrom = $derived(game.selectable ? null : saveFromText(game));
+  const tryNote = $derived(
+    game.date ? `Trying it out? You can fill this in now and save it from ${game.dateLabel}.` : 'Trying it out? You can fill this in now and save it once PlayHQ sets the game date.',
+  );
 
   type Mode = 'loading' | 'error' | 'readonly' | 'form' | 'review' | 'done' | 'conflict';
   let mode = $state<Mode>('loading');
@@ -23,7 +30,7 @@
   let saving = $state(false);
   let draftOffer = $state(false);
   // svelte-ignore state_referenced_locally
-  const form = new GameForm(`draft:${team.team.slug}:${gameId}`);
+  const form = new GameForm(`draft:${team.team.slug}:${game.gameId}`);
 
   const stamp = (iso: string) =>
     new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
@@ -133,6 +140,7 @@
   </div>
   <ReportSummary {report} {team} {gameId} />
 {:else if mode === 'form'}
+  {#if saveFrom}<p class="card note" role="status">{tryNote}</p>{/if}
   {#if draftOffer}
     <div class="banner" role="status">
       Resume your unsaved report?
@@ -145,7 +153,8 @@
   <h2>Check your report</h2>
   <ReportSummary report={form.state} {team} {gameId} onedit={toSection} />
   {#if message}<p class="error" role="alert">{message}</p>{/if}
-  <button type="button" class="btn" onclick={submit} disabled={saving}>{saving ? 'Saving…' : 'Submit'}</button>
+  {#if saveFrom}<p class="note" role="status">{saveFrom}</p>{/if}
+  <button type="button" class="btn" onclick={submit} disabled={saving || !!saveFrom}>{saving ? 'Saving…' : 'Submit'}</button>
 {:else if mode === 'done' && report}
   <div class="card done">
     <Mascot name={team.team.mascot} />

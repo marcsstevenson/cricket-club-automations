@@ -17,6 +17,10 @@ export const STATUS_TEXT = {
   upcoming: 'Upcoming',
 } as const;
 
+/** Why an upcoming game's report can't be saved yet (functional spec §4). */
+export const saveFromText = (g: { date: string | null; dateLabel: string }) =>
+  g.date ? `You can save this report from ${g.dateLabel}.` : 'You can save this report once PlayHQ sets the game date.';
+
 export const MILESTONE_TEXT = { bat: 'Batting', bowl: 'Bowling', hattrick: 'Hat-trick' } as const;
 
 const HAT_TRICK = "3 wickets from 3 balls in a row by the same bowler. They can span two of the bowler's overs";

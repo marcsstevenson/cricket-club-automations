@@ -104,10 +104,10 @@ describe('PUT report', () => {
     expect(Object.keys(fields).sort()).toEqual(['mascot', 'milestones.0.player', 'potd']);
   });
 
-  it('refuses future games', async () => {
+  it('refuses future games, saying when they can be saved', async () => {
     const res = await put(app(), 'g3', form());
     expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: 'game_not_selectable' });
+    expect(await res.json()).toMatchObject({ error: 'game_not_selectable', message: 'You can save this report from Sat 7 Feb.' });
   });
 
   it('rejects malformed bodies', async () => {

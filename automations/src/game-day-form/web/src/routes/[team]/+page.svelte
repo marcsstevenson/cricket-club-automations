@@ -29,15 +29,12 @@
 {#if !team.fixture.available}
   <p class="card note">Fixture not available from PlayHQ yet.</p>
 {:else if !gameId}
-  <GamePicker games={team.fixture.games} selected={null} onselect={select} />
-  <p class="card note">No games played yet this season.</p>
+  <p class="card note">No games in the fixture yet.</p>
 {:else}
   <GamePicker games={team.fixture.games} selected={gameId} onselect={select} />
   {#if !chosen}
     <p class="card note">This game isn't in the fixture.</p>
-  {:else if !chosen.selectable}
-    <p class="card note">This game hasn't been played yet.</p>
   {:else}
-    {#key gameId}<GameView {team} {gameId} />{/key}
+    {#key gameId}<GameView {team} game={chosen} />{/key}
   {/if}
 {/if}

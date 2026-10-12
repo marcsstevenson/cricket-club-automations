@@ -19,7 +19,25 @@ test('a PlayHQ-scored game is prefilled', async ({ page }) => {
   await expect(page.locator('#team-runs')).toHaveAttribute('readonly', '');
   await expect(page.getByLabel('No', { exact: true })).toHaveCount(0);
   await expect(page.getByText("Couldn't match to squad — please check.")).toBeVisible();
-  await expect(page.getByRole('option', { name: 'Riccarton Rams', exact: false })).toHaveAttribute('disabled', '');
+  await expect(page.getByRole('option', { name: 'Riccarton Rams', exact: false })).not.toHaveAttribute('disabled');
+});
+
+test('an upcoming game can be filled in and reviewed but not saved', async ({ page }) => {
+  await page.goto('/pumas');
+  await page.locator('#game').selectOption('e2e-g3');
+  const note = /Trying it out\? You can fill this in now and save it from \w{3} \d{1,2} \w{3}\./;
+  await expect(page.getByText(note)).toBeVisible();
+  await page.getByLabel('No', { exact: true }).check();
+  await page.locator('#team-wkts').fill('5');
+  await page.locator('#team-runs').fill('100');
+  await page.locator('#opp-wkts').fill('7');
+  await page.locator('#opp-runs').fill('90');
+  await page.locator('#potd').selectOption({ label: 'Alex T. (0)' });
+  await page.locator('#mascot').selectOption({ label: 'Jordan L. (0)' });
+  await page.getByRole('button', { name: 'Next: review' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your report' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit' })).toBeDisabled();
+  await expect(page.getByText(/You can save this report from \w{3} \d{1,2} \w{3}\./)).toBeVisible();
 });
 
 test('pairs games explain the limits and flag over-share milestones', async ({ page }) => {

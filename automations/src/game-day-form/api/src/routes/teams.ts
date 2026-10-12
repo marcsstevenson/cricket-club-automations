@@ -29,7 +29,8 @@ export function registerTeams(app: Hono<AppEnv>) {
       today,
       squad: players.map((p) => ({ key: p.key, label: labels.get(p.key)! })),
       fixture,
-      defaultGameId: fixture.games.filter((g) => g.selectable).at(-1)?.gameId ?? null,
+      // The latest game played; before the first game, the first upcoming one so people can try the form.
+      defaultGameId: (fixture.games.filter((g) => g.selectable).at(-1) ?? fixture.games[0])?.gameId ?? null,
       awards: await awardGames(c.env.DB, squad.season.playhqSeasonId, team.slug),
     };
     return c.json(body);

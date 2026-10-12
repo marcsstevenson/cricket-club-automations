@@ -9,7 +9,7 @@
   Game
   <select id="game" value={selected ?? ''} onchange={(e) => onselect(e.currentTarget.value)}>
     {#each games as g (g.gameId)}
-      <option value={g.gameId} disabled={!g.selectable}>
+      <option value={g.gameId}>
         {g.dateLabel} · {g.round} · v {g.opposition} · {g.venue} — {STATUS_TEXT[g.reportStatus]}
       </option>
     {/each}

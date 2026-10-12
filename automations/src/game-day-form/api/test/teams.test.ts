@@ -50,6 +50,22 @@ describe('GET /api/teams/:slug', () => {
     expect(body.defaultGameId).toBe('g2');
   });
 
+  it('defaults to the first upcoming game before any game has been played', async () => {
+    const early = v1Page([
+      v1Game({ id: 'gTbc', date: null, status: 'PENDING', round: 3 }),
+      v1Game({ id: 'g5', date: '2026-02-14', status: 'PENDING', round: 2 }),
+      v1Game({ id: 'g4', date: '2026-02-07', status: 'PENDING', round: 1 }),
+    ]);
+    const { body } = await get('/api/teams/pumas', { [`/v1/grades/${GRADE}/games`]: early });
+    expect(body.fixture.games.map((g) => g.gameId)).toEqual(['g4', 'g5', 'gTbc']);
+    expect(body.defaultGameId).toBe('g4');
+  });
+
+  it('defaults to a Date TBC game when it is the only game', async () => {
+    const tbc = v1Page([v1Game({ id: 'gTbc', date: null, status: 'PENDING', round: 1 })]);
+    expect((await get('/api/teams/pumas', { [`/v1/grades/${GRADE}/games`]: tbc })).body.defaultGameId).toBe('gTbc');
+  });
+
   it('marks reported and not-played games', async () => {
     const insert = (id: string, game: string, scoring: string) =>
       env.DB.prepare(

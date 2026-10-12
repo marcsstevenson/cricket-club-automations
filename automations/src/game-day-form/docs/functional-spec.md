@@ -103,20 +103,27 @@ Each option shows:
 
 > *Sat 30 Jan · R5 · v Tigers · Parklands Reserve* — **[status]**
 
-| Status | Meaning | Selectable |
+| Status | Meaning | Can be saved |
 |---|---|---|
 | Reported | A report exists | Yes |
 | Not played | A report exists with answer "Game not played" | Yes |
 | Not yet reported | Game date is today or earlier, no report | Yes |
-| Upcoming | Game date is after today | **No** |
+| Upcoming | Game date is after today, or Date TBC | **Not yet** |
 
-**Default selection:** the most recent game dated on or before today. If there is none, no game is selected
-and the page shows *"No games played yet this season."*
+Every game can be selected, so people can see how the form works before the first game.
+
+**Default selection:** the most recent game dated on or before today. If there is none, the first game in the
+fixture (so the page opens on the form). If the team has no games yet, the page shows *"No games in the
+fixture yet."*
 
 **After selecting a game:**
 
 - No report yet → the blank form (§5), prefilled from PlayHQ where available.
 - Report exists → the read-only view (§7.2).
+- **Upcoming game** → the form and review work as normal, with the note *"Trying it out? You can fill this in now
+  and save it from Sat 17 Oct."* (Date TBC: *"…save it once PlayHQ sets the game date."*). **Submit** is
+  disabled on the review step with *"You can save this report from Sat 17 Oct."*, and the server refuses the
+  save with the same message. The on-device draft is kept, so the coach is offered it again on game day.
 
 ---
 
