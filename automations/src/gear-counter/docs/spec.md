@@ -173,6 +173,7 @@ retried), kept apart from plain taps so the two never net against each other.
 - When a synced tap applies less than was queued (the Club pool ran out, e.g. offline taps or someone else's
   changes), the page shows the server's levels and a notice: "Club pool only had 2 Tall cones; the other 1 wasn't
   added."
+- When nothing could be applied: "None left in the Club pool: 1 Tall cones wasn't added."
 - The Club pool's own page has no toggle; a Club pool tap aimed at it is refused (400). The item must be listed for
   the team, as for any tap; the Club pool lists every item that is not retired, so it always has a row. If the Club
   pool is hidden, pool taps are refused (409) and the toggle is not shown.
@@ -192,6 +193,8 @@ Writes are rate limited per IP (300 per minute).
 | DELETE | `/teams/:slug/items/:item` | | 204; 409 if level > 0 or a Kit Spec item |
 | POST | `/teams/:slug/items/:item/count` | `{ level, who, note? }` (0–999) | `{ level }` |
 | POST | `/moves` | `{ from, to, item, qty, who, note? }` (qty 1–999) | `{ fromLevel, toLevel }`; 409 if short |
+
+A pool tap that keeps colliding with other taps returns 503 `busy` (retried by the phone).
 
 Notes are up to 200 characters. `levels` lines: `{ itemId, name, category, level, kitSpec, added, retired, pinned }` (`pinned` = always listed). `recent`: the
 newest 50 log entries `{ id, at, who, itemId, itemName, kind, change, levelAfter, from, to, note }`, where
