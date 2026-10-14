@@ -55,6 +55,19 @@ export async function getAnyTeam(db: D1Database, slug: string): Promise<TeamRow>
   return row;
 }
 
+/** The Club pool's slug: the club's store that other teams take gear from (spec §2, §4.5). */
+export const CLUB_POOL = 'pool';
+
+/** The Club pool if it is visible, else null. */
+export async function clubPool(db: D1Database): Promise<TeamRow | null> {
+  return db.prepare('SELECT * FROM teams WHERE slug = ? AND hidden = 0').bind(CLUB_POOL).first<TeamRow>();
+}
+
+export async function poolLevels(db: D1Database): Promise<Record<string, number>> {
+  const { results } = await db.prepare('SELECT item_id, level FROM levels WHERE team_slug = ?').bind(CLUB_POOL).all<{ item_id: string; level: number }>();
+  return Object.fromEntries(results.map((r) => [r.item_id, r.level]));
+}
+
 export async function adminTeams(db: D1Database): Promise<AdminTeam[]> {
   const { results } = await db
     .prepare(`SELECT t.*, (SELECT MAX(at) FROM log g WHERE g.team_slug = t.slug) AS last_change FROM teams t ${ORDER}`)

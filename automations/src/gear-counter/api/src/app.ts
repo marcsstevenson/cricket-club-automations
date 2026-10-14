@@ -8,7 +8,7 @@ import { loadCatalogue, publicCatalogue } from './catalogue';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
 import { adjust, ensureListed, listItem, move, recent, setCount, teamLevels, unlistItem } from './levels';
-import { getTeam, listTeams, summary } from './teams';
+import { CLUB_POOL, clubPool, getTeam, listTeams, poolLevels, summary } from './teams';
 import { parseNote, parseWho } from './who';
 
 const ITEM = /^[A-Z0-9-]{1,20}$/;
@@ -51,7 +51,8 @@ export function createApp(deps: Deps) {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
     const cat = await loadCatalogue(c.env.DB);
     await ensureListed(c.env.DB, t, cat, deps.now());
-    const page: TeamPage = { team: summary(t), spec: t.spec, levels: await teamLevels(c.env.DB, t, cat), recent: await recent(c.env.DB, t.slug) };
+    const pool = t.slug !== CLUB_POOL && (await clubPool(c.env.DB)) ? await poolLevels(c.env.DB) : null;
+    const page: TeamPage = { team: summary(t), spec: t.spec, levels: await teamLevels(c.env.DB, t, cat), recent: await recent(c.env.DB, t.slug), pool };
     return c.json(page);
   });
 
@@ -61,7 +62,7 @@ export function createApp(deps: Deps) {
     const parsed = v.safeParse(Adjust, b);
     if (!parsed.success) throw new ApiError(400, 'invalid_delta', 'delta must be a whole number from -20 to 20, not 0.');
     const who = parseWho(b.who);
-    return c.json({ level: await adjust(c.env.DB, t, await loadCatalogue(c.env.DB), item(c.req.param('item')), parsed.output.delta, who, deps.now()) });
+    return c.json(await adjust(c.env.DB, t, await loadCatalogue(c.env.DB), item(c.req.param('item')), parsed.output.delta, who, deps.now()));
   });
 
   app.put('/teams/:slug/items/:item', async (c) => {

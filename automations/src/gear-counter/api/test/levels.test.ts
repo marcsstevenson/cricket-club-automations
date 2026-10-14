@@ -17,6 +17,19 @@ describe('teams', () => {
     expect(teams.find((t) => t.slug === 'pumas')).toMatchObject({ kind: 'team', grade: 'Year 7', dot: 'green' });
   });
 
+  it('shows the Club pool’s levels on other pages, but not its own', async () => {
+    const api = client();
+    await count(api, 'pool', 'STU-04', 3);
+    const pumas = await page(api, 'pumas');
+    expect(pumas.pool?.['STU-04']).toBe(3);
+    expect((await page(api, 'pool')).pool).toBeNull();
+  });
+
+  it('has no Club pool levels while the Club pool is hidden', async () => {
+    await env.DB.prepare("UPDATE teams SET hidden = 1 WHERE slug = 'pool'").run();
+    expect((await page(client(), 'pumas')).pool).toBeNull();
+  });
+
   it('shows a team its Kit Spec items in catalogue order with no changes yet', async () => {
     const p = await page(client(), 'penguins');
     expect(p.spec).toBe('Kiwi Y1');
@@ -43,14 +56,14 @@ describe('adjust', () => {
   it('applies concurrent changes without losing any', async () => {
     const api = client();
     await Promise.all(Array.from({ length: 10 }, () => adjust(api, 'pumas', 'FLD-SCC', 1)));
-    expect(await (await adjust(api, 'pumas', 'FLD-SCC', -3)).json()).toEqual({ level: 7 });
+    expect(await (await adjust(api, 'pumas', 'FLD-SCC', -3)).json()).toEqual({ level: 7, applied: -3 });
   });
 
   it('never goes below 0 and logs only what was applied', async () => {
     const api = client();
     await adjust(api, 'pumas', 'STU-04', 1, 'Jo');
-    expect(await (await adjust(api, 'pumas', 'STU-04', -5)).json()).toEqual({ level: 0 });
-    expect(await (await adjust(api, 'pumas', 'STU-04', -1)).json()).toEqual({ level: 0 });
+    expect(await (await adjust(api, 'pumas', 'STU-04', -5)).json()).toEqual({ level: 0, applied: -1 });
+    expect(await (await adjust(api, 'pumas', 'STU-04', -1)).json()).toEqual({ level: 0, applied: 0 });
     const { recent } = await page(api, 'pumas');
     expect(recent.map((e) => [e.who, e.change, e.levelAfter])).toEqual([['Sam', -1, 0], ['Jo', 1, 1]]);
   });

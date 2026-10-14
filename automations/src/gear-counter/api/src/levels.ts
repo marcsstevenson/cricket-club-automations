@@ -1,4 +1,4 @@
-import type { LevelLine, LogEntry, LogKind } from '../../shared/src/types';
+import type { AdjustResult, LevelLine, LogEntry, LogKind } from '../../shared/src/types';
 import type { Cat } from './catalogue';
 import { ApiError } from './errors';
 import type { TeamRow } from './teams';
@@ -58,7 +58,7 @@ export async function teamLevels(db: D1Database, team: TeamRow, cat: Cat): Promi
  */
 export async function adjust(
   db: D1Database, team: TeamRow, cat: Cat, itemId: string, delta: number, who: string, now: Date,
-): Promise<number> {
+): Promise<AdjustResult> {
   const name = itemName(cat, itemId);
   const at = now.toISOString();
   const cutoff = new Date(now.getTime() - GROUP_MS).toISOString();
@@ -66,6 +66,7 @@ export async function adjust(
   const applied = `MAX(-${level}, ?3)`;
   const newest = '(SELECT id FROM log WHERE team_slug = ?1 AND item_id = ?2 ORDER BY id DESC LIMIT 1)';
   const results = await db.batch<{ level: number }>([
+    db.prepare('SELECT level FROM levels WHERE team_slug = ?1 AND item_id = ?2').bind(team.slug, itemId),
     // Add to this person's recent adjust entry for the item…
     db
       .prepare(
@@ -87,9 +88,10 @@ export async function adjust(
       .prepare('UPDATE levels SET level = MAX(0, level + ?3), updated_at = ?4 WHERE team_slug = ?1 AND item_id = ?2 RETURNING level')
       .bind(team.slug, itemId, delta, at),
   ]);
-  const row = results[3].results[0];
-  if (!row) throw notListed();
-  return row.level;
+  const before = results[0].results[0];
+  const row = results[4].results[0];
+  if (!before || !row) throw notListed();
+  return { level: row.level, applied: row.level - before.level };
 }
 
 export async function listItem(db: D1Database, team: TeamRow, cat: Cat, itemId: string, now: Date): Promise<LevelLine> {

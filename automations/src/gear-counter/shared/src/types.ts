@@ -42,6 +42,15 @@ export interface TeamPage {
   levels: LevelLine[];
   /** Newest first, at most 50. */
   recent: LogEntry[];
+  /** The Club pool's levels by item id; null on the Club pool's own page or while it is hidden (spec §4.5). */
+  pool: Record<string, number> | null;
+}
+
+/** POST /teams/:slug/items/:item/adjust. `applied` is the change actually made; `poolLevel` only for pool taps. */
+export interface AdjustResult {
+  level: number;
+  applied: number;
+  poolLevel?: number;
 }
 
 export interface LevelLine {
