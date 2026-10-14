@@ -62,6 +62,10 @@ Read **CHANGES** and **REVIEW** before writing:
 - `IN SQUAD, NOT IN SHEET` — kept. Remove by hand only if the user confirms they left (and no saved report uses the key).
 - `TEAM GONE FROM PLAYHQ` — kept; ask the user.
 
+**Teams entered under another club** (Korimako plays as East Christchurch Shirley's "ECSCC/Parklands Korimako"):
+`playhqTeamId` is the entry that is in the grade (fixtures, scorecards); `playhqClubTeamId` is Parklands' own,
+ungraded copy, so the script doesn't add it as a new team. Set the grade ID by hand from the other club's entry.
+
 Player keys never change once issued (saved reports reference them). The script reuses existing keys and only mints
 `p<first 8 of playhqId>` for new players.
 

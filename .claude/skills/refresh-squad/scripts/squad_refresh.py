@@ -121,7 +121,8 @@ for col in range(2, len(teamrow)):
             review.append(f'[{sl}] no PlayHQ match {cell!r}  <- coach/parent, or player not registered in PlayHQ yet')
 
 teams = {t['slug']: t for t in sq['teams']}
-by_id = {t['playhqTeamId']: t for t in sq['teams']}
+# playhqClubTeamId: Parklands' own PlayHQ copy of a team that plays under another club's entry (e.g. Korimako/ECSCC).
+by_id = {i: t for t in sq['teams'] for i in (t['playhqTeamId'], t.get('playhqClubTeamId')) if i}
 changes = []
 
 # New PlayHQ teams and grade allocations
@@ -135,12 +136,12 @@ for pt in phq:
         sq['teams'].append(t); teams[sl] = t; by_id[pt['id']] = t
         changes.append(f'NEW TEAM {pt["name"]} -> slug {sl}, grade {t.get("gradeName", "?")} (check a mascot image exists)')
     gid = (pt.get('grade') or {}).get('id')
-    if gid and t.get('playhqGradeId') != gid:
+    if gid and pt['id'] == t['playhqTeamId'] and t.get('playhqGradeId') != gid:
         changes.append(f'GRADE {t["slug"]}: {t.get("playhqGradeId")} -> {gid} ({pt["grade"].get("name")})')
         t['playhqGradeId'] = gid
 live = {pt['id'] for pt in phq}
 for t in sq['teams']:
-    if t['playhqTeamId'] not in live:
+    if t['playhqTeamId'] not in live and t.get('playhqClubTeamId') not in live:
         changes.append(f'TEAM GONE FROM PLAYHQ: {t["slug"]} (left in place - remove by hand if intended)')
 for sl in sheet:
     if sl not in teams:
