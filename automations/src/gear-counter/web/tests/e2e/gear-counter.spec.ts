@@ -5,7 +5,13 @@ test.describe.configure({ mode: 'serial' });
 
 const line = (page: Page, name: string) => page.locator('li.line', { has: page.getByText(name, { exact: true }) });
 
-async function named(page: Page, path: string, name = 'Sam') {
+/** Plain + and − (spec §4.1): turn off "Take from Club pool" when the page has it. */
+async function plain(page: Page) {
+  const toggle = page.getByLabel('Take from Club pool');
+  if (await toggle.count()) await toggle.uncheck();
+}
+
+async function named(page: Page, path: string, name = 'Sam', { pool = false } = {}) {
   await page.goto(path);
   // Each test runs in a fresh browser, so the name is always asked for.
   const dialog = page.getByRole('dialog', { name: "What's your name?" });
@@ -13,6 +19,7 @@ async function named(page: Page, path: string, name = 'Sam') {
   await dialog.getByLabel('Your name').fill(name);
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText(`Counting as ${name}`)).toBeVisible();
+  if (!pool) await plain(page);
 }
 
 test('home lists the teams and the club pool', async ({ page }) => {
@@ -78,6 +85,54 @@ test('set count and move to another team show in both logs', async ({ page }) =>
   await page.goto('/pumas');
   await expect(line(page, 'Tall cones').locator('.qty')).toHaveText('4');
   await expect(page.locator('.log li').first()).toContainText('Received 4 Tall cones from Club pool');
+});
+
+test('+ and − take from and give back to the Club pool by default', async ({ page }) => {
+  await page.request.post('/api/teams/pool/items/STU-04/count', { data: { level: 2, who: 'Setup' } });
+  await named(page, '/pumas', 'Sam', { pool: true });
+  await expect(page.getByLabel('Take from Club pool')).toBeChecked();
+  const bails = line(page, 'Bails (pair)');
+  await expect(bails).toContainText('Pool 2');
+  await bails.getByRole('button', { name: 'One more Bails (pair)' }).click();
+  await bails.getByRole('button', { name: 'One more Bails (pair)' }).click();
+  await expect(bails.locator('.qty')).toHaveText('2');
+  await expect(bails).toContainText('None left in the Club pool');
+  await expect(bails.getByRole('button', { name: 'One more Bails (pair)' })).toBeDisabled();
+  await bails.getByRole('button', { name: 'One less Bails (pair)' }).click();
+  await expect(bails).toContainText('Pool 1');
+  await expect(page.getByText('All changes saved')).toBeVisible();
+  await expect(page.locator('.log li').first()).toContainText('Received 1 Bails (pair) from Club pool');
+
+  await page.getByLabel('Take from Club pool').uncheck();
+  await expect(bails).not.toContainText('Pool');
+  await bails.getByRole('button', { name: 'One more Bails (pair)' }).click();
+  await expect(bails.locator('.qty')).toHaveText('2');
+  await expect(page.getByText('All changes saved')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel('Take from Club pool')).toBeChecked(); // on again when the page opens
+  await expect(line(page, 'Bails (pair)')).toContainText('Pool 1');
+
+  await page.goto('/pool');
+  await expect(page.getByLabel('Take from Club pool')).toHaveCount(0);
+  await expect(line(page, 'Bails (pair)').locator('.qty')).toHaveText('1');
+  await expect(page.locator('.log li').first()).toContainText('Moved 1 Bails (pair) to Parklands Pumas');
+});
+
+test('offline Club pool taps that the pool can no longer cover are clipped at sync', async ({ page, context, request }) => {
+  await request.post('/api/teams/pool/items/HEL-J/count', { data: { level: 2, who: 'Setup' } });
+  await named(page, '/rhinos', 'Sam', { pool: true }); // Year 5 lists the J helmet
+  const helmets = line(page, 'J [53-54, age 7-10]');
+  await expect(helmets).toContainText('Pool 2');
+  await context.setOffline(true);
+  await helmets.getByRole('button', { name: /One more/ }).click();
+  await helmets.getByRole('button', { name: /One more/ }).click();
+  await expect(page.getByText('Offline — will sync')).toBeVisible();
+  await request.post('/api/teams/pool/items/HEL-J/count', { data: { level: 1, who: 'Jo' } }); // someone else took one
+  await context.setOffline(false);
+  await expect(page.getByText("Club pool only had 1 J [53-54, age 7-10]; the other 1 wasn't added.")).toBeVisible({ timeout: 15_000 });
+  await expect(helmets.locator('.qty')).toHaveText('1');
+  await expect(helmets).toContainText('None left in the Club pool');
 });
 
 test('a move larger than the level is refused', async ({ page }) => {
@@ -197,7 +252,8 @@ test('admin edits the catalogue and teams follow', async ({ page }) => {
   await expect(page.getByRole('status')).toHaveText('Rebound net is retired.');
 
   await page.goto('/tigers');
-  await expect(net).toContainText('Retired');
+  await expect(net).toContainText('Retired'); // the page has rendered, so the toggle is there to turn off
+  await plain(page);
   await expect(net.locator('.qty')).toHaveText('1'); // still held, so still listed
   await net.getByRole('button', { name: 'One less Rebound net' }).click();
   await expect(page.getByText('All changes saved')).toBeVisible();

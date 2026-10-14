@@ -1,5 +1,6 @@
 <script lang="ts">
   import { levelsText } from '$shared/levels';
+  import { shortText } from '$shared/queue';
   import type { LevelLine } from '$shared/types';
   import AddItem from '$lib/AddItem.svelte';
   import { api } from '$lib/api';
@@ -22,6 +23,12 @@
   let renaming = $state(false);
   let active = $state<LevelLine | null>(null);
 
+  // "Take from Club pool" (spec §3.3, §4.5): on each time the page opens, not remembered.
+  let fromPool = $state(true);
+  let pool = $derived(data.page.pool);
+  const usePool = $derived(fromPool && pool !== null);
+  const poolLeft = (itemId: string) => Math.max(0, (pool?.[itemId] ?? 0) - queue.pendingPool(itemId));
+
   const shown = (l: LevelLine) => Math.max(0, l.level + queue.pendingFor(team.slug, l.itemId));
   const lines = $derived(levels.map((l) => ({ ...l, level: shown(l) })));
   const groups = $derived(
@@ -43,6 +50,7 @@
       if (fresh.team.slug !== team.slug || queue.hasPending(team.slug)) return;
       levels = fresh.levels;
       recent = fresh.recent;
+      pool = fresh.pool;
     } catch {
       // keep the counter usable
     }
@@ -56,9 +64,17 @@
     queue.onIdle = (t) => {
       if (t === slug) void refresh(); // pick up the grouped log entry
     };
+    queue.onPool = (item, level) => {
+      if (pool) pool = { ...pool, [item]: level };
+    };
+    queue.onShort = (t, item, applied, short) => {
+      if (t === slug) notice = shortText(levels.find((l) => l.itemId === item)?.name ?? 'items', applied, short);
+    };
     return () => {
       queue.onLevel = null;
       queue.onIdle = null;
+      queue.onPool = null;
+      queue.onShort = null;
     };
   });
 
@@ -75,8 +91,9 @@
   function tap(l: LevelLine, delta: 1 | -1) {
     if (!me.name) return; // the name modal is open
     if (delta < 0 && shown(l) === 0) return;
+    if (delta > 0 && usePool && poolLeft(l.itemId) === 0) return;
     notice = '';
-    queue.add(team.slug, l.itemId, delta, false);
+    queue.add(team.slug, l.itemId, delta, usePool);
   }
 
   async function add(itemId: string) {
@@ -88,6 +105,7 @@
         const fresh = await api().team(team.slug);
         levels = fresh.levels;
         recent = fresh.recent;
+        pool = fresh.pool;
       } catch {
         levels = [...levels.filter((l) => l.itemId !== itemId), line];
       }
@@ -128,6 +146,9 @@
 </section>
 
 <div class="card toolbar">
+  {#if pool}
+    <label class="pool-toggle"><input type="checkbox" bind:checked={fromPool} /> Take from Club pool</label>
+  {/if}
   <p class="progress" aria-live="polite">{levelsText(total, team.kind)}</p>
   <p class="sync" class:offline={queue.offline && saving} role="status">
     {queue.offline && saving ? 'Offline — will sync' : saving ? 'Saving…' : 'All changes saved'}
@@ -147,6 +168,10 @@
           <div class="line-text">
             <span class="line-name">{l.name}</span>
             {#if l.retired}<span class="tag retired">Retired</span>{:else if l.added}<span class="tag">Added</span>{/if}
+            {#if usePool}
+              {@const left = poolLeft(l.itemId)}
+              <span class="pool-left" class:empty={left === 0}>{left === 0 ? 'None left in the Club pool' : `Pool ${left}`}</span>
+            {/if}
           </div>
           <div class="stepper">
             {#if !l.pinned && l.level === 0 && !pending}
@@ -155,7 +180,7 @@
               <button type="button" class="step" aria-label="One less {l.name}" disabled={l.level === 0} onclick={() => tap(l, -1)}>−</button>
             {/if}
             <span class="qty"><strong>{l.level}</strong></span>
-            <button type="button" class="step" aria-label="One more {l.name}" onclick={() => tap(l, 1)}>+</button>
+            <button type="button" class="step" aria-label="One more {l.name}" disabled={usePool && poolLeft(l.itemId) === 0} onclick={() => tap(l, 1)}>+</button>
             <button type="button" class="step more" aria-label="More for {l.name}" disabled={pending} onclick={() => (active = l)}>⋯</button>
           </div>
         </li>

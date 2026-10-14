@@ -83,6 +83,10 @@ select, input[type='search'], input[type='text'], input[type='password'], input[
 .who-line { margin: 4px 0 0; color: #fff; font-size: 0.9rem; }
 .who-line button { background: none; border: 0; padding: 0; color: var(--pcc-teal-400); font: inherit; text-decoration: underline; cursor: pointer; }
 .tag.retired { color: var(--pcc-grey-600); }
+.pool-toggle { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; }
+.pool-toggle input { width: 20px; height: 20px; }
+.pool-left { flex-basis: 100%; font-size: 0.8rem; color: var(--pcc-grey-600); }
+.pool-left.empty { color: var(--pcc-error); }
 .inline-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; grid-column: 1 / -1; }
 .inline-edit input, .inline-edit select { flex: 1 1 12rem; width: auto; }
 .qty-input { width: 5rem; text-align: center; }
