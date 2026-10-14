@@ -34,6 +34,8 @@ D1 `teams` (§6), managed on the admin page; seeded with the 27 game-day teams a
 - A **team** has a Kit Spec column; its Kit Spec items (quantity > 0, not retired) are always listed.
 - A **pool** has no Kit Spec column; every item that is not retired is always listed. A pool may have a
   **description** (up to 80 characters) shown instead of "Spare gear in storage".
+- The **Club pool** (slug `pool`) is the club's store. By default, + and − on every other team and pool take gear
+  from it and return gear to it (§4.5), so stock moves around the club instead of appearing from nowhere.
 - Other items are listed while a team/pool holds them or after **+ Add item**; at level 0 they can be removed (✕).
   A retired item, or one dropped from the team's Kit Spec, stays listed wherever it is held until it reaches 0.
 - A team with no dot colour shows a dashed empty dot; no mascot shows the ball.
@@ -52,10 +54,14 @@ teams in their sort order, then visible pools (Club pool first, then pools in th
 
 ### 3.3 Team or pool `/:slug`
 - Header band: mascot, name, the grade with its dot (pools: "Spare gear in storage"), and "Counting as …".
+- **Take from Club pool** toggle (every page except the Club pool's own), **on** each time the page opens; turning it
+  off lasts until the page is left. While on, + and − are Club pool taps (§4.5), each line shows the Club pool's level
+  as "Pool 5" (less this phone's queued pool taps), and + is disabled with "None left in the Club pool" when that is 0. While off, + and − are plain
+  adjusts (§4.1). Move, Set count and listing are the same either way.
 - Summary: "68 items in this bag" (pool: "… in this pool") — the sum of levels.
 - Listed items grouped by category in catalogue order. Each line: name, `[−] level [+]`, and a **⋯** button with
   **Move…** and **Set count…**. Items listed with **+ Add item** are tagged "Added".
-- − is disabled at 0; levels never go below 0.
+- − is disabled at 0; levels never go below 0, the Club pool's included.
 - **+ Add item** opens a modal of items (not retired) not listed here, grouped by category, with a search box; tapping one
   lists it at 0.
 - Items that are not always listed here (retired, dropped from the Kit Spec, or added) are tagged "Retired" or
@@ -151,6 +157,26 @@ and `level after` = new, with the note. Setting the same level as now writes not
 **+ Add item** lists an item at 0 (idempotent, no log entry); retired items cannot be added (409). Unlisting needs
 level 0 and an item that is not always listed there (§2); otherwise 409. A move into a team lists the item there.
 
+### 4.5 Club pool taps
++ and − with **Take from Club pool** on (§3.3). They use the same queue as §4.1 (works offline, one item at a time,
+retried), kept apart from plain taps so the two never net against each other.
+
+- The server applies a tap in one D1 transaction. The change actually applied is limited by the Club pool's level for
+  + and by the team's level for −; the team changes by that amount and the Club pool by the opposite. Nothing applied
+  means nothing logged.
+- **Log**: a pair of `move` entries sharing a `move_id` that starts `tap-`: on the team, `from` = Club pool when the
+  change is positive (`to` = Club pool when negative); on the Club pool, the opposite. They read like any move:
+  "Received 3 Tall cones from Club pool" / "Moved 3 Tall cones to Parklands Pumas".
+- **Grouping**, as §4.1: a tap is added to the newest pair for that team and item when its team entry is a `tap-`
+  move by the same name, last updated less than **2 minutes** before; both entries are updated, `from`/`to` swap if
+  the sign flips, and a pair netting to 0 is deleted. A manual Move in between starts a new pair.
+- When a synced tap applies less than was queued (the Club pool ran out, e.g. offline taps or someone else's
+  changes), the page shows the server's levels and a notice: "Club pool only had 2 Tall cones; the other 1 wasn't
+  added."
+- The Club pool's own page has no toggle; a Club pool tap aimed at it is refused (400). The item must be listed for
+  the team, as for any tap; the Club pool lists every item that is not retired, so it always has a row. If the Club
+  pool is hidden, pool taps are refused (409) and the toggle is not shown.
+
 ## 5. API (`/api`)
 
 Every change takes `who` (1–40 characters after trimming; 400 without it). Errors are `{ error, message }` JSON.
@@ -160,8 +186,8 @@ Writes are rate limited per IP (300 per minute).
 |---|---|---|---|
 | GET | `/catalogue` | | `{ categories, items, specs }`: categories and items (not retired) in order, Kit Spec column names |
 | GET | `/teams` | | Visible team summaries (teams, then pools) |
-| GET | `/teams/:slug` | | `{ team, spec, levels, recent }`; 404 if hidden |
-| POST | `/teams/:slug/items/:item/adjust` | `{ delta, who }` (integer −20…20, not 0) | `{ level }` |
+| GET | `/teams/:slug` | | `{ team, spec, levels, recent, pool }`; 404 if hidden. `pool` is `{ [itemId]: level }` for the Club pool, or null on the Club pool's page or when it is hidden |
+| POST | `/teams/:slug/items/:item/adjust` | `{ delta, who, pool? }` (integer −20…20, not 0) | `{ level, applied }`; with `pool: true` (§4.5) also `poolLevel` |
 | PUT | `/teams/:slug/items/:item` | `{ who }` | the listed level line |
 | DELETE | `/teams/:slug/items/:item` | | 204; 409 if level > 0 or a Kit Spec item |
 | POST | `/teams/:slug/items/:item/count` | `{ level, who, note? }` (0–999) | `{ level }` |
@@ -207,7 +233,8 @@ log(id INTEGER PK, at, updated_at, team_slug, item_id, item_name,
   INDEX (team_slug, id DESC), INDEX (team_slug, item_id, id DESC)
 ```
 
-`item_name` is copied into the log so entries survive catalogue renames. Times are ISO UTC; display converts to NZ.
+`item_name` is copied into the log so entries survive catalogue renames. Club pool taps (§4.5) are `move` pairs whose
+`move_id` starts `tap-`; manual moves use a plain UUID. Times are ISO UTC; display converts to NZ.
 
 ### Migration from stocktakes (`0003_levels.sql`)
 Taken after a full export of production (`wrangler d1 export`). For each team/pool:
@@ -238,9 +265,15 @@ sent after it (their routes are gone) and are dropped with an error.
   seeded teams; adjust (atomic, concurrent, floor at 0, logs
   the applied change); grouping (same name within 2 minutes merges, case-insensitive; different name, later than 2
   minutes, different item or a non-adjust entry in between start a new entry; a group netting to 0 is deleted);
-  list/unlist rules; set count (logs old → new, no-op when equal); moves (atomic, 409 when short, same team refused,
+  list/unlist rules; set count (logs old → new, no-op when equal); Club pool taps (both levels change together,
+  + limited by the pool and − by the team, `applied` reported, nothing logged when nothing applied, paired `tap-`
+  entries, grouping and sign flip, a manual Move in between starts a new pair, netting to 0 deletes the pair,
+  concurrent taps never take the pool below 0, refused on the Club pool itself and when it is hidden, `pool` map on
+  the team page); moves (atomic, 409 when short, same team refused,
   hidden refused, destination listed, paired entries); `who` required; recent changes shape and limit; the migration
   applied to stocktake data; admin (passcode, rate limit, add/hide, all three CSVs incl. blanks, hidden columns,
   quoting and formula escaping, NZ times).
-- Playwright: name modal on first visit → +/− → set count → move to another team → recent changes on both pages →
+- Playwright: name modal on first visit → +/− with Take from Club pool on (team up, "Pool N" down, Club pool page
+  agrees) → + disabled at Pool 0 → toggle off gives a plain + → toggle back on after reload → offline pool taps
+  clipped at sync with the notice → set count → move to another team → recent changes on both pages →
   add/unlist an item → offline taps sync → admin add pool, CSV downloads (club, levels, log), hide.
