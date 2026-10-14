@@ -1,4 +1,4 @@
-import type { ApiErrorBody, Catalogue, LevelLine, TeamPage, TeamSummary } from '$shared/types';
+import type { AdjustResult, ApiErrorBody, Catalogue, LevelLine, TeamPage, TeamSummary } from '$shared/types';
 
 export class ApiFailure extends Error {
   constructor(public status: number, public code: string, message: string, public body: ApiErrorBody | null) {
@@ -27,7 +27,8 @@ export function api(f: typeof fetch = fetch) {
     catalogue: () => req<Catalogue>('/catalogue'),
     teams: () => req<TeamSummary[]>('/teams'),
     team: (slug: string) => req<TeamPage>(`/teams/${encodeURIComponent(slug)}`),
-    adjust: (team: string, id: string, delta: number, who: string) => req<{ level: number }>(`${item(team, id)}/adjust`, json('POST', { delta, who })),
+    adjust: (team: string, id: string, delta: number, who: string, pool = false) =>
+      req<AdjustResult>(`${item(team, id)}/adjust`, json('POST', pool ? { delta, who, pool } : { delta, who })),
     list: (team: string, id: string, who: string) => req<LevelLine>(item(team, id), json('PUT', { who })),
     unlist: (team: string, id: string) => req<null>(item(team, id), { method: 'DELETE' }),
     count: (team: string, id: string, level: number, who: string, note: string) =>

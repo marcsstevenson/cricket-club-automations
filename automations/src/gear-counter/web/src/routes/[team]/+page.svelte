@@ -76,7 +76,7 @@
     if (!me.name) return; // the name modal is open
     if (delta < 0 && shown(l) === 0) return;
     notice = '';
-    queue.add(team.slug, l.itemId, delta);
+    queue.add(team.slug, l.itemId, delta, false);
   }
 
   async function add(itemId: string) {
