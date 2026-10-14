@@ -8,11 +8,15 @@ import { loadCatalogue, publicCatalogue } from './catalogue';
 import type { AppEnv, Deps } from './env';
 import { ApiError } from './errors';
 import { adjust, ensureListed, listItem, move, recent, setCount, teamLevels, unlistItem } from './levels';
+import { poolTap } from './pool-taps';
 import { CLUB_POOL, clubPool, getTeam, listTeams, poolLevels, summary } from './teams';
 import { parseNote, parseWho } from './who';
 
 const ITEM = /^[A-Z0-9-]{1,20}$/;
-const Adjust = v.object({ delta: v.pipe(v.number(), v.integer(), v.minValue(-20), v.maxValue(20), v.check((n) => n !== 0)) });
+const Adjust = v.object({
+  delta: v.pipe(v.number(), v.integer(), v.minValue(-20), v.maxValue(20), v.check((n) => n !== 0)),
+  pool: v.optional(v.boolean()),
+});
 const Count = v.object({ level: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(999)) });
 
 const Move = v.object({
@@ -60,9 +64,12 @@ export function createApp(deps: Deps) {
     const t = await getTeam(c.env.DB, c.req.param('slug'));
     const b = await body(c);
     const parsed = v.safeParse(Adjust, b);
-    if (!parsed.success) throw new ApiError(400, 'invalid_delta', 'delta must be a whole number from -20 to 20, not 0.');
+    if (!parsed.success) throw new ApiError(400, 'invalid_delta', 'delta must be a whole number from -20 to 20, not 0, and pool true or false.');
     const who = parseWho(b.who);
-    return c.json(await adjust(c.env.DB, t, await loadCatalogue(c.env.DB), item(c.req.param('item')), parsed.output.delta, who, deps.now()));
+    const cat = await loadCatalogue(c.env.DB);
+    const id = item(c.req.param('item'));
+    if (parsed.output.pool) return c.json(await poolTap(c.env.DB, t, cat, id, parsed.output.delta, who, deps.id, deps.now()));
+    return c.json(await adjust(c.env.DB, t, cat, id, parsed.output.delta, who, deps.now()));
   });
 
   app.put('/teams/:slug/items/:item', async (c) => {
