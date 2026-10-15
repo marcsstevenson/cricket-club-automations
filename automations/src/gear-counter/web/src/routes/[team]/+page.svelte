@@ -26,7 +26,7 @@
   // "Take from Club pool" (spec §3.3, §4.5): on each time the page opens, not remembered.
   let fromPool = $state(true);
   let pool = $derived(data.page.pool);
-  const usePool = $derived(fromPool && pool !== null);
+  const usePool = $derived(fromPool && !!pool);
   const poolLeft = (itemId: string) => Math.max(0, (pool?.[itemId] ?? 0) - queue.pendingPool(itemId));
 
   const shown = (l: LevelLine) => Math.max(0, l.level + queue.pendingFor(team.slug, l.itemId));

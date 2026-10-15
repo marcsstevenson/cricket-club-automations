@@ -16,14 +16,27 @@ export function parseTapKey(key: string): TapKey {
   return { team, item, mode: m === 'p' ? 'pool' : 'plain', who: key.slice(team.length + item.length + m.length + 3) };
 }
 
-/** Keys queued before Club pool taps were team|item|who and were always plain taps. */
+/** True when a stored key has team, item, mode and name parts (the name may be empty). */
+export const isTapKey = (key: string) => key.split('|', 4).length === 4;
+
+/** Keys queued before Club pool taps were team|item|who and were always plain taps. Keys without all three parts are skipped. */
 export function fromV2(old: Record<string, number>): Record<string, number> {
   return Object.fromEntries(
-    Object.entries(old).map(([key, n]) => {
+    Object.entries(old).flatMap(([key, n]) => {
+      if (key.split('|', 3).length < 3) return [];
       const [team, item] = key.split('|', 2);
-      return [tapKey({ team, item, mode: 'plain', who: key.slice(team.length + item.length + 2) }), n];
+      return [[tapKey({ team, item, mode: 'plain', who: key.slice(team.length + item.length + 2) }), n]];
     }),
   );
+}
+
+/** Stored v3 taps plus migrated v2 taps, without malformed keys, non-numeric values or taps that net to nothing. */
+export function mergeStored(v3: Record<string, number>, v2: Record<string, number>): Record<string, number> {
+  const sum: Record<string, number> = {};
+  for (const [k, n] of [...Object.entries(v3), ...Object.entries(fromV2(v2))]) {
+    if (isTapKey(k) && Number.isFinite(n)) sum[k] = (sum[k] ?? 0) + n;
+  }
+  return Object.fromEntries(Object.entries(sum).filter(([, n]) => n !== 0));
 }
 
 const wasnt = (n: number) => (n === 1 ? "wasn't" : "weren't");

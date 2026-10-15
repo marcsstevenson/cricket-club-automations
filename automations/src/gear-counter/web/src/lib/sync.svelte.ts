@@ -1,4 +1,4 @@
-import { fromV2, parseTapKey, tapKey } from '$shared/queue';
+import { mergeStored, parseTapKey, tapKey } from '$shared/queue';
 import { api, isTransient } from './api';
 import { me } from './who.svelte';
 
@@ -21,11 +21,10 @@ function read(key: string): Record<string, number> {
 }
 
 function load(): Record<string, number> {
-  const result = read(KEY);
   const v2 = read(V2_KEY);
+  // Taps queued before Club pool taps were all plain taps; malformed keys and zero nets are dropped.
+  const result = mergeStored(read(KEY), v2);
   if (Object.keys(v2).length) {
-    // Taps queued before Club pool taps were all plain taps.
-    for (const [k, n] of Object.entries(fromV2(v2))) result[k] = (result[k] ?? 0) + n;
     try {
       localStorage.setItem(KEY, JSON.stringify(result));
       localStorage.removeItem(V2_KEY);
