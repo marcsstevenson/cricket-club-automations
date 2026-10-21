@@ -67,26 +67,30 @@
 <section class="hero"><h1>All games</h1><p>Current season, every team.</p></section>
 
 <form class="card filters" onsubmit={(e) => e.preventDefault()}>
-  <label class="field">Day
-    <select bind:value={day} disabled={!list}>
-      <option value="">All days</option>
-      {#each days as [value, label] (value)}<option {value}>{label}</option>{/each}
-    </select>
-  </label>
-  <label class="field">Team
-    <select bind:value={team}>
-      <option value="">All teams</option>
-      {#each data.teams as t (t.slug)}<option value={t.slug}>{t.name}</option>{/each}
-    </select>
-  </label>
+  <div class="pickers">
+    <label class="field">Day
+      <select bind:value={day} disabled={!list}>
+        <option value="">All days</option>
+        {#each days as [value, label] (value)}<option {value}>{label}</option>{/each}
+      </select>
+    </label>
+    <label class="field">Team
+      <select bind:value={team}>
+        <option value="">All teams</option>
+        {#each data.teams as t (t.slug)}<option value={t.slug}>{t.name}</option>{/each}
+      </select>
+    </label>
+  </div>
   <fieldset>
     <legend>Status</legend>
-    {#each STATUSES as s (s)}
-      <label class="choice"><input type="checkbox" value={s} bind:group={statuses} /> {STATUS_TEXT[s]}</label>
-    {/each}
+    <div class="choices">
+      {#each STATUSES as s (s)}
+        <label class="choice"><input type="checkbox" value={s} bind:group={statuses} /> {STATUS_TEXT[s]}</label>
+      {/each}
+      <label class="choice"><input type="checkbox" bind:checked={followUp} /> Needs follow-up</label>
+    </div>
   </fieldset>
-  <label class="choice"><input type="checkbox" bind:checked={followUp} /> Needs follow-up</label>
-  <p>
+  <p class="exports">
     <a class="btn-secondary" href="/api/export/games.csv{exportQs ? `?${exportQs}` : ''}" download>Export games</a>
     <a class="btn-secondary" href="/api/export/milestones.csv{exportQs ? `?${exportQs}` : ''}" download>Export milestones</a>
   </p>
@@ -130,8 +134,13 @@
 {/if}
 
 <style>
-  .filters fieldset { border: 0; padding: 0; margin: 8px 0; }
-  .filters legend { float: none; font-size: 1rem; }
+  .filters { padding-top: 4px; }
+  .pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 0 12px; }
+  .filters fieldset { border: 0; padding: 0; margin: 12px 0 0; }
+  .filters legend { float: none; margin: 0; font-size: 1rem; }
+  .choices { display: flex; flex-wrap: wrap; gap: 0 20px; }
+  .choices .choice { padding: 6px 0; }
+  .exports { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
   .loading { display: flex; align-items: center; gap: 10px; color: var(--pcc-grey-600); }
   .spinner {
     width: 22px; height: 22px; flex: none; border-radius: 50%;
