@@ -100,6 +100,7 @@ export function registerList(app: Hono<AppEnv>) {
         round: row.round, opposition: row.opposition, venue: row.venue, status: row.status, scoring: row.scoring,
         issues: row.issues, notPlayedReason: row.notPlayedReason, notPlayedOther: row.notPlayedOther, score: row.score,
         potd: row.potd, mascot: row.mascot, milestoneCount: row.milestoneCount, uncheckedCount: row.uncheckedCount,
+        highlights: row.highlights, photoCount: row.photoCount,
       })),
     };
     return c.json(body);

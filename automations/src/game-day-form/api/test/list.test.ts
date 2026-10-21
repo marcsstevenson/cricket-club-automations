@@ -52,6 +52,38 @@ describe('GET /api/games', () => {
     expect(csv.trim().split('\n')).toHaveLength(2);
   });
 
+  it('shows highlights text and photo counts, and filters by them', async () => {
+    const app = await seeded();
+    const jpeg = new Uint8Array(10);
+    jpeg.set([0xff, 0xd8, 0xff]);
+    const photo = async () =>
+      (await (await call(app, '/api/photos', { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: jpeg })).json<{ id: string }>()).id;
+    await put(app, 'g2', form({ highlights: '', photoIds: [await photo(), await photo()] }));
+
+    const body = await (await call(app, '/api/games')).json<GamesList>();
+    const row = (id: string) => body.rows.find((r) => r.gameId === id)!;
+    expect(row('g1')).toMatchObject({ highlights: '=cmd()', photoCount: 0 });
+    expect(row('g2')).toMatchObject({ highlights: '', photoCount: 2 });
+    expect(row('g3')).toMatchObject({ highlights: '', photoCount: 0 });
+
+    const q = async (qs: string) => (await (await call(app, `/api/games?${qs}`)).json<GamesList>()).rows.map((r) => r.gameId);
+    expect(await q('highlights=any')).toEqual(['g2', 'g1']);
+    expect(await q('highlights=text')).toEqual(['g1']);
+    expect(await q('highlights=photos')).toEqual(['g2']);
+    expect(await q('highlights=none')).toEqual(['g3']);
+    const csv = await (await call(app, '/api/export/games.csv?highlights=photos')).text();
+    expect(csv.trim().split('\n')).toHaveLength(2);
+  });
+
+  it('trims long highlights to a short preview', async () => {
+    const app = await seeded();
+    await put(app, 'g2', form({ highlights: `${'word '.repeat(60)}end` }));
+    const body = await (await call(app, '/api/games')).json<GamesList>();
+    const h = body.rows.find((r) => r.gameId === 'g2')!.highlights;
+    expect(h.length).toBeLessThanOrEqual(121);
+    expect(h.endsWith('…')).toBe(true);
+  });
+
   it('filters by day, with tbc for games PlayHQ has no date for', async () => {
     const app = await seeded();
     const q = async (qs: string) => (await (await call(app, `/api/games?${qs}`)).json<GamesList>()).rows.map((r) => r.gameId);

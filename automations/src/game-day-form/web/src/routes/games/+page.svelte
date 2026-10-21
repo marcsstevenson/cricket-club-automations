@@ -10,8 +10,11 @@
 
   type Scoring = keyof typeof SCORING_TEXT;
   const SCORINGS = Object.keys(SCORING_TEXT) as Scoring[];
+  const HIGHLIGHTS = { any: 'Text or photos', photos: 'Has photos', text: 'Has text', none: 'None' } as const;
+  type Highlights = keyof typeof HIGHLIGHTS;
+  const HIGHLIGHT_KINDS = Object.keys(HIGHLIGHTS) as Highlights[];
 
-  // Team, status, follow-up and scoring are remembered on this device; the day is not (it opens on the last game day).
+  // Team, status, follow-up, scoring and highlights are remembered on this device; the day is not (it opens on the last game day).
   const SAVED = 'pcc-games-filters-v1';
   const saved = (() => {
     try {
@@ -27,12 +30,13 @@
   let statuses = $state<ListStatus[]>(pick(saved.statuses, STATUSES));
   let followUp = $state(saved.followUp === true);
   let scoring = $state<Scoring | ''>(SCORINGS.includes(saved.scoring) ? saved.scoring : '');
+  let highlights = $state<Highlights | ''>(HIGHLIGHT_KINDS.includes(saved.highlights) ? saved.highlights : '');
   let list = $state<GamesList | null>(null);
   let error = $state('');
   let seq = 0;
 
   $effect(() => {
-    const v = JSON.stringify({ teams, statuses, followUp, scoring });
+    const v = JSON.stringify({ teams, statuses, followUp, scoring, highlights });
     try {
       localStorage.setItem(SAVED, v);
     } catch {
@@ -46,6 +50,7 @@
       ...(statuses.length ? { status: statuses.join(',') } : {}),
       ...(followUp ? { followUp: '1' } : {}),
       ...(scoring ? { scoring } : {}),
+      ...(highlights ? { highlights } : {}),
     }).toString(),
   );
 
@@ -142,6 +147,12 @@
         {#each SCORINGS as k (k)}<option value={k}>{SCORING_TEXT[k]}</option>{/each}
       </select>
     </label>
+    <label class="field">Highlights
+      <select bind:value={highlights}>
+        <option value="">Any</option>
+        {#each HIGHLIGHT_KINDS as k (k)}<option value={k}>{HIGHLIGHTS[k]}</option>{/each}
+      </select>
+    </label>
   </div>
   <fieldset>
     <legend>Status</legend>
@@ -174,6 +185,22 @@
         </div>
         <a href="/{r.teamSlug}?game={r.gameId}">{r.round} v {r.opposition}</a>
         <small class="note">{day ? '' : `${r.dateLabel} · `}{r.venue}</small>
+        {#if r.highlights || r.photoCount}
+          <p class="highlights">
+            {#if r.highlights}
+              <a class="highlight" href="/{r.teamSlug}?game={r.gameId}" title={r.highlights} aria-label="Highlights: {r.highlights}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7" /></svg>
+                Highlights
+              </a>
+            {/if}
+            {#if r.photoCount}
+              <a class="highlight" href="/{r.teamSlug}?game={r.gameId}" aria-label="{r.photoCount} {r.photoCount === 1 ? 'photo' : 'photos'}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z" /><circle cx="12" cy="13" r="3.5" /></svg>
+                {r.photoCount}
+              </a>
+            {/if}
+          </p>
+        {/if}
         <dl>
           {#if r.scoring}
             <div class="wide"><dt>PlayHQ scoring</dt><dd>{SCORING_TEXT[r.scoring]}{#if r.issues}<small>{r.issues}</small>{/if}</dd></div>
@@ -197,7 +224,7 @@
 
 <style>
   .filters { padding-top: 4px; }
-  .pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 0 12px; }
+  .pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 0 12px; }
   .multi { position: relative; margin-top: 4px; font-weight: 400; }
   .multi summary {
     list-style: none; cursor: pointer; padding: 10px 36px 10px 12px; border: 1px solid var(--pcc-grey-600);
@@ -233,6 +260,12 @@
   .game-card.missing .badge { background: var(--pcc-surface); border-color: var(--pcc-error); }
   .game-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
   .game-head .badge { flex: none; }
+  .highlights { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
+  .highlight {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+    background: var(--pcc-surface); border: 1px solid var(--pcc-grey-300); font-size: 0.85rem; text-decoration: none;
+  }
+  .highlight svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
   dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 8px 0 0; }
   dl:empty { display: none; }
   dl .wide { grid-column: 1 / -1; }

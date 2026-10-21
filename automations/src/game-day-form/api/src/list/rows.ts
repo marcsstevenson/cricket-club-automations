@@ -19,6 +19,17 @@ export function person(key: string | null, namedId: string | null, r: StoredRepo
   return { label: '', id: '', isOther: false, fullName: '' };
 }
 
+const PREVIEW = 120;
+
+/** The first PREVIEW characters of the highlights, cut at a word where possible. */
+export function preview(text: string | null | undefined): string {
+  const t = (text ?? '').trim().replace(/\s+/g, ' ');
+  if (t.length <= PREVIEW) return t;
+  const cut = t.slice(0, PREVIEW);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > PREVIEW / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
 function makeRow(team: Team, g: FixtureGame, r: StoredReport | null, today: string, labels: Map<string, string>): Row {
   const status: ListStatus = r
     ? r.scoring === 'not_played'
@@ -46,6 +57,8 @@ function makeRow(team: Team, g: FixtureGame, r: StoredReport | null, today: stri
     mascot: r ? person(r.mascotKey, r.mascotNamedId, r, team, labels).label || null : null,
     milestoneCount: r?.milestones.length ?? 0,
     uncheckedCount: r?.milestones.filter((m) => m.check && !m.check.checked).length ?? 0,
+    highlights: preview(r?.highlights),
+    photoCount: r?.photoIds.length ?? 0,
     report: r,
     team,
   };
@@ -86,12 +99,23 @@ export function applyFilters(rows: Row[], q: URLSearchParams): Row[] {
   const scoring = q.get('scoring');
   const followUp = q.get('followUp') === '1';
   const date = q.get('date'); // YYYY-MM-DD, or 'tbc' for games PlayHQ has no date for
+  const highlights = q.get('highlights'); // any (text or photos) | text | photos | none
   return rows.filter(
     (r) =>
       (!teams.length || teams.includes(r.teamSlug)) &&
       (!scoring || r.scoring === scoring) &&
       (!date || (r.date ?? 'tbc') === date) &&
+      (!highlights || hasHighlights(r, highlights)) &&
       (!statuses.length || statuses.includes(r.status)) &&
       (!followUp || r.scoring === 'no' || r.scoring === 'yes_issues' || r.uncheckedCount > 0),
   );
+}
+
+function hasHighlights(r: Row, kind: string): boolean {
+  const text = r.highlights !== '';
+  const photos = r.photoCount > 0;
+  if (kind === 'text') return text;
+  if (kind === 'photos') return photos;
+  if (kind === 'none') return !text && !photos;
+  return kind === 'any' ? text || photos : true;
 }

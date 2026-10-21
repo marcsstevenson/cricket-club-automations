@@ -171,6 +171,38 @@ test('all games filters by several teams and PlayHQ scoring, remembered except t
   await expect(teams.locator('summary')).toHaveText('All teams');
 });
 
+// A 1×1 PNG: small enough to inline, real enough for the browser to decode and resize.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+
+test('all games cards show highlight icons and filter by highlights', async ({ page }) => {
+  await page.goto('/pumas?game=e2e-g1');
+  await page.getByRole('button', { name: 'Edit' }).click();
+  await page.locator('input[type=file]').setInputFiles({ name: 'catch.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.locator('img[alt="Attached to this report"]')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Next: review' }).click();
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await expect(page.getByText('Thanks — report saved.')).toBeVisible();
+
+  await page.goto('/games');
+  await page.getByLabel('Day').selectOption({ label: 'All days' });
+  const hawks = page.locator('.game-card', { hasText: 'Hornby Hawks' });
+  await expect(hawks.getByRole('link', { name: 'Highlights: Great catch by the keeper' })).toBeVisible();
+  await expect(hawks.getByRole('link', { name: '1 photo' })).toBeVisible();
+  await expect(page.locator('.game-card', { hasText: 'Riccarton Rams' }).locator('.highlight')).toHaveCount(0);
+
+  const filter = page.getByRole('combobox', { name: /^Highlights/ });
+  await filter.selectOption({ label: 'Has photos' });
+  await expect(page.locator('.game-card')).toHaveCount(1);
+  await expect(page.locator('.game-card')).toContainText('Hornby Hawks');
+  await filter.selectOption({ label: 'None' });
+  await expect(page.locator('.game-card')).toHaveCount(2);
+  await expect(page.locator('.game-card', { hasText: 'Hornby Hawks' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Export games' })).toHaveAttribute('href', /highlights=none/);
+
+  await page.reload();
+  await expect(filter).toHaveValue('none');
+});
+
 test('all games waits for a pause in filter changes before reloading', async ({ page }) => {
   await page.goto('/games');
   await expect(page.locator('.game-card').first()).toBeVisible();

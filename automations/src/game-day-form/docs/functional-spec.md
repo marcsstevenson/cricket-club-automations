@@ -414,16 +414,23 @@ One row per game across all teams in the JSON, sorted by date (newest first). By
 | Player of the day | *First L.* |
 | Mascot of the day | *First L.* |
 | Milestones | Count of batting + bowling + hat-trick rows, plus unchecked flags, e.g. *3 (1 to check)* |
+| Highlights | A notes icon if Q5 text was typed (hover shows the first ~120 characters) and a camera icon with the photo count |
 
 - **Missing** = game date is before today and there is no report. Missing rows are highlighted.
 - Each row links to that game's report on the team page (or the blank form if there is no report).
 
 ### 8.2 Filters
 
-- Team (one or all)
+- Day (one game day, *Date TBC*, or all days; opens on the last game day on or before today; not remembered)
+- Teams (any combination, or all)
+- PlayHQ scoring (any, or one Q1 answer)
+- Highlights (any, text or photos, has photos, has text, none)
 - Status (any combination)
 - **Needs follow-up** — Q1 answer is *No* or *Yes but there were issues*, or the report has an unchecked
   milestone flag (§6.3.3)
+
+Teams, PlayHQ scoring, highlights, status and follow-up are remembered on the device. Filter changes reload
+the list after a 400 ms pause, so a quick run of clicks sends one request.
 
 ### 8.3 Exports (CSV)
 

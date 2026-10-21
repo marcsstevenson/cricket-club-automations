@@ -69,6 +69,9 @@ export interface GameRow {
   mascot: string | null;
   milestoneCount: number;
   uncheckedCount: number;
+  /** The highlights text, cut to a short preview ('' when none). */
+  highlights: string;
+  photoCount: number;
 }
 
 export interface GamesList {

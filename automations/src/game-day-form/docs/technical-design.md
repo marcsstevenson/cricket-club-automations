@@ -420,7 +420,7 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 | `PUT /api/teams/:slug/games/:gameId/report` | `ReportIn` incl. `baseVersion` (0 for new) | `ReportOut` | Validates with `shared/validation.ts` + server checks (§9.1). `409 version_conflict` with `{latest: ReportOut}`. `WRITE_LIMIT` per IP. |
 | `POST /api/photos` | `image/jpeg` body ≤ 2 MB | `{id}` | Checks JPEG magic bytes. `WRITE_LIMIT` per IP. |
 | `GET /api/photos/:id` | — | image | Served if attached to a report, or created < 24 h ago. `Cache-Control: public, max-age=31536000, immutable`. |
-| `GET /api/games` | `?team=&status=&followUp=` | `{today, rows:[GameRow]}` | Current season, all teams. Fixtures from cache per grade; reports from D1. |
+| `GET /api/games` | `?team=a,b&status=&followUp=1&scoring=&highlights=any\|text\|photos\|none&date=` | `{today, rows:[GameRow]}` | Current season, all teams. Fixtures from cache per grade; reports from D1. |
 | `GET /api/export/games.csv` | same filters | CSV | Public: labels + player keys only. |
 | `GET /api/export/milestones.csv` | same filters | CSV | Public: labels + player keys only. |
 | `GET /api/admin/export/games.csv`, `…/milestones.csv` | header `X-Admin-Passcode` | CSV | Adds full-name columns. `401` on wrong passcode; `ADMIN_LIMIT` per IP. Constant-time compare. |
