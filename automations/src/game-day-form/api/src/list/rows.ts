@@ -81,13 +81,15 @@ export function buildRows(i: {
 }
 
 export function applyFilters(rows: Row[], q: URLSearchParams): Row[] {
-  const team = q.get('team');
+  const teams = (q.get('team') ?? '').split(',').filter(Boolean);
   const statuses = (q.get('status') ?? '').split(',').filter(Boolean);
+  const scoring = q.get('scoring');
   const followUp = q.get('followUp') === '1';
   const date = q.get('date'); // YYYY-MM-DD, or 'tbc' for games PlayHQ has no date for
   return rows.filter(
     (r) =>
-      (!team || r.teamSlug === team) &&
+      (!teams.length || teams.includes(r.teamSlug)) &&
+      (!scoring || r.scoring === scoring) &&
       (!date || (r.date ?? 'tbc') === date) &&
       (!statuses.length || statuses.includes(r.status)) &&
       (!followUp || r.scoring === 'no' || r.scoring === 'yes_issues' || r.uncheckedCount > 0),

@@ -136,6 +136,41 @@ test('all games marks the unreported past game as Missing', async ({ page }) => 
   await expect(page.locator('.game-card', { hasText: 'Riccarton Rams' })).toContainText('Upcoming');
 });
 
+test('all games filters by several teams and PlayHQ scoring, remembered except the day', async ({ page }) => {
+  await page.goto('/games');
+  const teams = page.locator('.multi');
+  await expect(teams.locator('summary')).toHaveText('All teams');
+  await teams.locator('summary').click();
+  await teams.getByLabel('Parklands Tigers').check();
+  await expect(teams.locator('summary')).toHaveText('Parklands Tigers');
+  await expect(page.locator('.game-card')).toHaveCount(0); // Tigers have no games
+  await teams.getByLabel('Parklands Pumas').check();
+  await expect(teams.locator('summary')).toHaveText('Parklands Pumas, Parklands Tigers');
+  await page.locator('h1').click(); // clicking elsewhere closes the list
+  await expect(teams.getByLabel('Parklands Pumas')).toBeHidden();
+
+  await page.getByLabel('PlayHQ scoring').selectOption({ label: 'No' });
+  await page.getByLabel('Missing').check();
+  await page.getByLabel('Day').selectOption({ label: 'All days' });
+  await expect(page.locator('.game-card')).toHaveCount(0); // a reported game can't be Missing
+  await page.getByLabel('Missing').uncheck();
+  await page.getByLabel('Reported').check();
+  await expect(page.locator('.game-card')).toHaveCount(1);
+  await expect(page.locator('.game-card')).toContainText('Hornby Hawks');
+  await expect(page.getByRole('link', { name: 'Export games' })).toHaveAttribute('href', /team=pumas%2Ctigers.*scoring=no/);
+
+  await page.reload();
+  await expect(teams.locator('summary')).toHaveText('Parklands Pumas, Parklands Tigers');
+  await expect(page.getByLabel('PlayHQ scoring')).toHaveValue('no');
+  await expect(page.getByLabel('Reported')).toBeChecked();
+  await expect(page.getByLabel('Day')).not.toHaveValue(''); // the day isn't remembered: back to the last game day
+  await expect(page.locator('.game-card')).toContainText('Hornby Hawks');
+
+  await teams.locator('summary').click();
+  await teams.getByRole('button', { name: 'All teams' }).click();
+  await expect(teams.locator('summary')).toHaveText('All teams');
+});
+
 test('all games shows a loading animation, then opens on the last game day', async ({ page }) => {
   let release = () => {};
   const held = new Promise<void>((r) => (release = r));

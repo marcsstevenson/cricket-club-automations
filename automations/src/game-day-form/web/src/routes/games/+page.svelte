@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { api } from '$lib/api';
   import type { GamesList, ListStatus } from '$shared/api';
   import { REASON_TEXT, SCORING_TEXT, STATUS_TEXT } from '$shared/text';
@@ -7,20 +8,54 @@
   let { data }: PageProps = $props();
   const STATUSES: ListStatus[] = ['missing', 'reported', 'not_played', 'upcoming'];
 
-  let team = $state('');
-  let statuses = $state<ListStatus[]>([]);
-  let followUp = $state(false);
+  type Scoring = keyof typeof SCORING_TEXT;
+  const SCORINGS = Object.keys(SCORING_TEXT) as Scoring[];
+
+  // Team, status, follow-up and scoring are remembered on this device; the day is not (it opens on the last game day).
+  const SAVED = 'pcc-games-filters-v1';
+  const saved = (() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(SAVED) ?? '{}');
+      return v && typeof v === 'object' ? v : {};
+    } catch {
+      return {};
+    }
+  })();
+  const pick = <T,>(v: unknown, allowed: readonly T[]) => (Array.isArray(v) ? allowed.filter((a) => v.includes(a)) : []);
+
+  let teams = $state<string[]>(pick(saved.teams, untrack(() => data.teams.map((t) => t.slug))));
+  let statuses = $state<ListStatus[]>(pick(saved.statuses, STATUSES));
+  let followUp = $state(saved.followUp === true);
+  let scoring = $state<Scoring | ''>(SCORINGS.includes(saved.scoring) ? saved.scoring : '');
   let list = $state<GamesList | null>(null);
   let error = $state('');
   let seq = 0;
 
+  $effect(() => {
+    const v = JSON.stringify({ teams, statuses, followUp, scoring });
+    try {
+      localStorage.setItem(SAVED, v);
+    } catch {
+      // Storage blocked: the filters just aren't remembered.
+    }
+  });
+
   const qs = $derived(
     new URLSearchParams({
-      ...(team ? { team } : {}),
+      ...(teams.length ? { team: teams.join(',') } : {}),
       ...(statuses.length ? { status: statuses.join(',') } : {}),
       ...(followUp ? { followUp: '1' } : {}),
+      ...(scoring ? { scoring } : {}),
     }).toString(),
   );
+
+  // Teams picker: a checkbox list that closes when you click outside it.
+  let teamsOpen = $state(false);
+  let teamsEl = $state<HTMLDetailsElement>();
+  const teamsLabel = $derived.by(() => {
+    const names = data.teams.filter((t) => teams.includes(t.slug)).map((t) => t.name);
+    return names.length === 0 ? 'All teams' : names.length <= 2 ? names.join(', ') : `${names.length} teams`;
+  });
 
   // Day filter (null until the first list arrives): a YYYY-MM-DD, 'tbc' for games with no date yet, or '' for all days.
   let day = $state<string | null>(null);
@@ -62,6 +97,12 @@
   });
 </script>
 
+<svelte:window
+  onclick={(e) => {
+    if (teamsOpen && teamsEl && !teamsEl.contains(e.target as Node)) teamsOpen = false;
+  }}
+/>
+
 <svelte:head><title>All games · Parklands Cricket Club</title></svelte:head>
 
 <section class="hero"><h1>All games</h1><p>Current season, every team.</p></section>
@@ -74,10 +115,21 @@
         {#each days as [value, label] (value)}<option {value}>{label}</option>{/each}
       </select>
     </label>
-    <label class="field">Team
-      <select bind:value={team}>
-        <option value="">All teams</option>
-        {#each data.teams as t (t.slug)}<option value={t.slug}>{t.name}</option>{/each}
+    <div class="field">Teams
+      <details class="multi" bind:this={teamsEl} bind:open={teamsOpen}>
+        <summary>{teamsLabel}</summary>
+        <div class="multi-panel">
+          <button type="button" class="link" onclick={() => (teams = [])}>All teams</button>
+          {#each data.teams as t (t.slug)}
+            <label class="choice"><input type="checkbox" value={t.slug} bind:group={teams} /> {t.name}</label>
+          {/each}
+        </div>
+      </details>
+    </div>
+    <label class="field">PlayHQ scoring
+      <select bind:value={scoring}>
+        <option value="">Any</option>
+        {#each SCORINGS as k (k)}<option value={k}>{SCORING_TEXT[k]}</option>{/each}
       </select>
     </label>
   </div>
@@ -136,6 +188,21 @@
 <style>
   .filters { padding-top: 4px; }
   .pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 0 12px; }
+  .multi { position: relative; margin-top: 4px; font-weight: 400; }
+  .multi summary {
+    list-style: none; cursor: pointer; padding: 10px 36px 10px 12px; border: 1px solid var(--pcc-grey-600);
+    border-radius: var(--radius); background: var(--pcc-surface); font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative;
+  }
+  .multi summary::-webkit-details-marker { display: none; }
+  .multi summary::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+  .multi-panel {
+    position: absolute; z-index: 10; left: 0; right: 0; top: calc(100% + 4px); max-height: 320px; overflow-y: auto;
+    background: var(--pcc-surface); border: 1px solid var(--pcc-grey-600); border-radius: var(--radius);
+    padding: 4px 12px; box-shadow: 0 6px 16px rgba(2, 21, 43, 0.15);
+  }
+  .multi-panel .choice input { display: inline-block; flex: none; margin: 0; padding: 0; }
+  .multi-panel .link { background: none; border: 0; padding: 8px 0; color: var(--pcc-blue-700); text-decoration: underline; cursor: pointer; font: inherit; }
   .filters fieldset { border: 0; padding: 0; margin: 12px 0 0; }
   .filters legend { float: none; margin: 0; font-size: 1rem; }
   .choices { display: flex; flex-wrap: wrap; gap: 0 20px; }

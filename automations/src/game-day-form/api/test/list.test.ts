@@ -42,6 +42,16 @@ describe('GET /api/games', () => {
     expect(await q('team=tigers')).toEqual([]);
   });
 
+  it('filters by several teams and by PlayHQ scoring', async () => {
+    const app = await seeded();
+    const q = async (qs: string) => (await (await call(app, `/api/games?${qs}`)).json<GamesList>()).rows.map((r) => r.gameId);
+    expect(await q('team=tigers,pumas')).toEqual(['g3', 'g2', 'g1']);
+    expect(await q('scoring=yes_issues')).toEqual(['g1']);
+    expect(await q('scoring=no')).toEqual([]);
+    const csv = await (await call(app, '/api/export/games.csv?scoring=yes_issues')).text();
+    expect(csv.trim().split('\n')).toHaveLength(2);
+  });
+
   it('filters by day, with tbc for games PlayHQ has no date for', async () => {
     const app = await seeded();
     const q = async (qs: string) => (await (await call(app, `/api/games?${qs}`)).json<GamesList>()).rows.map((r) => r.gameId);
