@@ -171,6 +171,23 @@ test('all games filters by several teams and PlayHQ scoring, remembered except t
   await expect(teams.locator('summary')).toHaveText('All teams');
 });
 
+test('all games waits for a pause in filter changes before reloading', async ({ page }) => {
+  await page.goto('/games');
+  await expect(page.locator('.game-card').first()).toBeVisible();
+  const calls: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/api/games')) calls.push(r.url());
+  });
+  await page.locator('.multi summary').click();
+  await page.locator('.multi').getByLabel('Parklands Pumas').check();
+  await page.locator('.multi').getByLabel('Parklands Tigers').check();
+  await page.getByLabel('Reported').check();
+  await expect.poll(() => calls.length).toBe(1);
+  await page.waitForTimeout(800);
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toMatch(/team=pumas%2Ctigers&status=reported/);
+});
+
 test('all games shows a loading animation, then opens on the last game day', async ({ page }) => {
   let release = () => {};
   const held = new Promise<void>((r) => (release = r));

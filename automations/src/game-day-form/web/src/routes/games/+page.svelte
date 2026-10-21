@@ -75,25 +75,35 @@
     return dates.filter((d) => d <= r.today).at(-1) ?? dates[0] ?? (r.rows.length ? 'tbc' : '');
   }
 
+  // Filter changes wait for a pause before reloading, so a quick run of clicks sends one request.
+  const DEBOUNCE_MS = 400;
+  let firstLoad = true;
+
   $effect(() => {
     const q = qs;
     const mine = ++seq;
     loading = true;
-    api()
-      .games(q)
-      .then((r) => {
-        if (mine !== seq) return;
-        list = r;
-        error = '';
-        const kept = day === '' || r.rows.some((g) => (g.date ?? 'tbc') === day);
-        if (day === null || !kept) day = lastGameDay(r);
-      })
-      .catch(() => {
-        if (mine === seq) error = 'Could not load games.';
-      })
-      .finally(() => {
-        if (mine === seq) loading = false;
-      });
+    const timer = setTimeout(
+      () =>
+        api()
+          .games(q)
+          .then((r) => {
+            if (mine !== seq) return;
+            list = r;
+            error = '';
+            const kept = day === '' || r.rows.some((g) => (g.date ?? 'tbc') === day);
+            if (day === null || !kept) day = lastGameDay(r);
+          })
+          .catch(() => {
+            if (mine === seq) error = 'Could not load games.';
+          })
+          .finally(() => {
+            if (mine === seq) loading = false;
+          }),
+      firstLoad ? 0 : DEBOUNCE_MS,
+    );
+    firstLoad = false;
+    return () => clearTimeout(timer);
   });
 </script>
 
