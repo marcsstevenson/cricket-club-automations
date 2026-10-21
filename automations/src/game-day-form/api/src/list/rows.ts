@@ -84,9 +84,11 @@ export function applyFilters(rows: Row[], q: URLSearchParams): Row[] {
   const team = q.get('team');
   const statuses = (q.get('status') ?? '').split(',').filter(Boolean);
   const followUp = q.get('followUp') === '1';
+  const date = q.get('date'); // YYYY-MM-DD, or 'tbc' for games PlayHQ has no date for
   return rows.filter(
     (r) =>
       (!team || r.teamSlug === team) &&
+      (!date || (r.date ?? 'tbc') === date) &&
       (!statuses.length || statuses.includes(r.status)) &&
       (!followUp || r.scoring === 'no' || r.scoring === 'yes_issues' || r.uncheckedCount > 0),
   );

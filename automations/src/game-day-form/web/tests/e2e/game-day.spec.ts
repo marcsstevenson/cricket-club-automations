@@ -130,7 +130,36 @@ test('All games and Admin menu items appear only after the admin passcode is acc
 
 test('all games marks the unreported past game as Missing', async ({ page }) => {
   await page.goto('/games');
-  await expect(page.locator('tr.missing')).toContainText('Syd Martin Scorchers');
-  await expect(page.locator('tr', { hasText: 'Hornby Hawks' })).toContainText('Reported');
-  await expect(page.locator('tr', { hasText: 'Riccarton Rams' })).toContainText('Upcoming');
+  await page.getByLabel('Day').selectOption({ label: 'All days' });
+  await expect(page.locator('.game-card.missing')).toContainText('Syd Martin Scorchers');
+  await expect(page.locator('.game-card', { hasText: 'Hornby Hawks' })).toContainText('Reported');
+  await expect(page.locator('.game-card', { hasText: 'Riccarton Rams' })).toContainText('Upcoming');
+});
+
+test('all games shows a loading animation, then opens on the last game day', async ({ page }) => {
+  let release = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route('**/api/games**', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto('/games');
+  await expect(page.getByRole('status')).toContainText('Loading games');
+  release();
+  await expect(page.getByRole('status')).toHaveCount(0);
+
+  const day = page.getByLabel('Day');
+  await expect(day.locator('option')).toHaveCount(4); // All days + three game days
+  await expect(page.locator('.game-card')).toHaveCount(1);
+  await expect(page.locator('.game-card')).toContainText('Syd Martin Scorchers'); // last day on or before today
+  await expect(page.getByRole('link', { name: 'Export games' })).toHaveAttribute('href', /date=\d{4}-\d{2}-\d{2}/);
+
+  await day.selectOption({ index: 1 }); // the earliest day
+  await expect(page.locator('.game-card')).toHaveCount(1);
+  await expect(page.locator('.game-card')).toContainText('Hornby Hawks');
+  await expect(page.locator('.game-card')).toContainText('PlayHQ scoring');
+
+  await day.selectOption({ label: 'All days' });
+  await expect(page.locator('.game-card')).toHaveCount(3);
+  await expect(page.getByRole('link', { name: 'Export games' })).not.toHaveAttribute('href', /date=/);
 });

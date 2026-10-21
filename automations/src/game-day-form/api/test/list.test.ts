@@ -41,6 +41,16 @@ describe('GET /api/games', () => {
     expect(await q('followUp=1')).toEqual(['g1']);
     expect(await q('team=tigers')).toEqual([]);
   });
+
+  it('filters by day, with tbc for games PlayHQ has no date for', async () => {
+    const app = await seeded();
+    const q = async (qs: string) => (await (await call(app, `/api/games?${qs}`)).json<GamesList>()).rows.map((r) => r.gameId);
+    expect(await q('date=2026-01-31')).toEqual(['g2']);
+    expect(await q('date=tbc')).toEqual([]);
+    const csv = await (await call(app, '/api/export/games.csv?date=2026-01-24')).text();
+    expect(csv).toContain('Hornby Hawks');
+    expect(csv.trim().split('\n')).toHaveLength(2);
+  });
 });
 
 describe('exports', () => {
