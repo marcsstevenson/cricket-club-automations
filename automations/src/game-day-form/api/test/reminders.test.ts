@@ -6,17 +6,20 @@ import type { Env } from '../src/env';
 import { validateContacts } from '../src/reminders/contacts';
 import { nzHour, runReminders } from '../src/reminders/run';
 import { form, pumasRoutes, put } from './builders';
+import { GRADE, v1Game, v1Page } from './fixtures/playhq';
 import { call, seedSquad, testDeps } from './helpers';
 
 const SIX_PM = new Date('2026-01-31T05:00:00Z'); // Sat 31 Jan, 6 pm NZDT: g2's game day
+/** The hourly run at this hour (NZDT) on 31 Jan. */
+const at = (nzHour: number) => new Date(Date.UTC(2026, 0, 31, nzHour - 13));
 const RESEND = 'https://api.resend.com/emails';
 const ADMIN = { 'x-admin-passcode': 'letmein' };
 
 type Sent = { body: Record<string, unknown>; headers: Headers };
 
-/** PlayHQ fake plus a Resend fake that records what was sent. */
-function routes(resend: () => Response = () => Response.json({ id: 'em_1' })) {
-  const phq = pumasRoutes();
+/** PlayHQ fake (optionally with other games) plus a Resend fake that records what was sent. */
+function routes(resend: () => Response = () => Response.json({ id: 'em_1' }), games?: ReturnType<typeof v1Game>[]) {
+  const phq = pumasRoutes(games ? { [`/v1/grades/${GRADE}/games`]: v1Page(games) } : {});
   const sent: Sent[] = [];
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -79,10 +82,62 @@ describe('runReminders', () => {
     expect(body.html).toContain('https://gameday.parklandscricket.co.nz/pumas?game=g2');
     expect(body.text).toContain('R4 v Syd Martin Scorchers');
     expect(headers.get('authorization')).toBe('Bearer test-resend');
-    expect(headers.get('idempotency-key')).toBe('reminder-pumas-2026-01-31');
+    expect(headers.get('idempotency-key')).toBe('reminder-pumas-g2');
 
     expect(await run(r, new Date('2026-01-31T06:00:00Z'))).toEqual({ sent: 0, failed: 0 }); // the 7 pm run
     expect(r.sent).toHaveLength(1);
+  });
+
+  it('waits until the game has been played: three hours after it starts', async () => {
+    await saveContacts('pumas', ['coach@example.com']);
+    const r = routes(undefined, [v1Game({ id: 'g2', date: '2026-01-31', time: '16:00:00', round: 4 })]);
+    expect(await run(r, at(18))).toEqual({ sent: 0, failed: 0 });
+    expect(await run(r, at(19))).toEqual({ sent: 1, failed: 0 });
+  });
+
+  it('reminds an evening game after it finishes', async () => {
+    await saveContacts('pumas', ['coach@example.com']);
+    const r = routes(undefined, [v1Game({ id: 'g2', date: '2026-01-31', time: '17:30:00', round: 4 })]);
+    expect(await run(r, at(18))).toEqual({ sent: 0, failed: 0 });
+    expect(await run(r, at(20))).toEqual({ sent: 0, failed: 0 });
+    expect(await run(r, at(21))).toEqual({ sent: 1, failed: 0 });
+  });
+
+  it('treats a game with no start time as played by 6 pm', async () => {
+    await saveContacts('pumas', ['coach@example.com']);
+    const r = routes(undefined, [v1Game({ id: 'g2', date: '2026-01-31', time: null, round: 4 })]);
+    expect(await run(r, at(18))).toEqual({ sent: 1, failed: 0 });
+  });
+
+  it('sends nothing after 10 pm, even for a game that finished late', async () => {
+    await saveContacts('pumas', ['coach@example.com']);
+    const r = routes(undefined, [v1Game({ id: 'g2', date: '2026-01-31', time: '19:30:00', round: 4 })]);
+    expect(await run(r, at(22))).toEqual({ sent: 0, failed: 0 }); // finishes 10:30 pm
+    expect(await run(r, at(23))).toEqual({ sent: 0, failed: 0 });
+    expect(r.sent).toHaveLength(0);
+  });
+
+  it("reminds each of a day's games once, each after it's played", async () => {
+    await saveContacts('pumas', ['coach@example.com']);
+    const r = routes(undefined, [
+      v1Game({ id: 'g2', date: '2026-01-31', round: 4 }),
+      v1Game({ id: 'g2b', date: '2026-01-31', time: '17:30:00', round: 5, opp: 'Hornby Hawks' }),
+    ]);
+    expect(await run(r, at(18))).toEqual({ sent: 1, failed: 0 });
+    expect(await run(r, at(21))).toEqual({ sent: 1, failed: 0 });
+    expect(await run(r, at(22))).toEqual({ sent: 0, failed: 0 });
+    expect(r.sent.map((s) => s.body.subject)).toEqual([
+      'Game-day report needed: Parklands Pumas v Syd Martin Scorchers',
+      'Game-day report needed: Parklands Pumas v Hornby Hawks',
+    ]);
+  });
+
+  it('never reminds the same game twice, even if it moves to another day', async () => {
+    await saveContacts('pumas', ['coach@example.com']);
+    expect(await run(routes(), at(18))).toEqual({ sent: 1, failed: 0 });
+    await env.CONFIG.delete(`phq:fixture:${GRADE}`); // PlayHQ now has it a day later
+    const moved = routes(undefined, [v1Game({ id: 'g2', date: '2026-02-01', round: 4 })]);
+    expect(await run(moved, new Date('2026-02-01T05:00:00Z'))).toEqual({ sent: 0, failed: 0 });
   });
 
   it('waits until 6 pm in New Zealand', async () => {

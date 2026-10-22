@@ -25,7 +25,7 @@
     { "name": "ADMIN_LIMIT", "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } }
   ],
   // 14:00 UTC: photo cleanup. 05:00 and 06:00 UTC: game-day reminders (one of them is 6 pm in NZ, whatever the season).
-  "triggers": { "crons": ["0 14 * * *", "0 5 * * *", "0 6 * * *"] },
+  "triggers": { "crons": ["0 14 * * *", "0 5-10 * * *"] },
   "vars": {
     "PLAYHQ_TENANT": "nzc",
     "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",

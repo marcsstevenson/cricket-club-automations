@@ -87,7 +87,7 @@ export function buildRows(i: {
     if (used.has(`${r.teamSlug}|${r.gameId}`)) continue;
     const team = i.squad.teams.find((t) => t.slug === r.teamSlug);
     if (!team) continue;
-    const g: FixtureGame = { gameId: r.gameId, date: r.gameDate, round: '', opposition: '—', venue: '—', status: '' };
+    const g: FixtureGame = { gameId: r.gameId, date: r.gameDate, time: null, round: '', opposition: '—', venue: '—', status: '' };
     rows.push(makeRow(team, g, r, i.today, i.labels.get(team.slug)!));
   }
   return rows.sort((a, b) => (b.date ?? '0000').localeCompare(a.date ?? '0000'));

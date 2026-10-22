@@ -113,7 +113,7 @@ docs/                   functional-spec.md, technical-design.md
     { "name": "REFRESH_LIMIT", "namespace_id": "1002", "simple": { "limit": 1,  "period": 60 } },
     { "name": "ADMIN_LIMIT",   "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } }
   ],
-  "triggers": { "crons": ["0 14 * * *", "0 5 * * *", "0 6 * * *"] },
+  "triggers": { "crons": ["0 14 * * *", "0 5-10 * * *"] },
   "vars": { "PLAYHQ_TENANT": "nzc", "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",
             "RESEND_BASE_URL": "https://api.resend.com", "SITE_URL": "https://gameday.parklandscricket.co.nz" },
   "observability": { "enabled": true }
@@ -455,17 +455,19 @@ Daily cron (`0 14 * * *` UTC ≈ 2–3 am NZ):
 - Delete photos with `report_id IS NULL AND created_at < now − 24 h` from R2 and D1.
 - Delete photos detached by an edit (also `report_id IS NULL`) the same way.
 
-Reminder crons (`0 5 * * *` and `0 6 * * *` UTC — one of them is 6 pm NZ in both daylight and standard time;
+Reminder cron (`0 5-10 * * *` UTC — hourly, covering 6–10 pm NZ in both daylight and standard time;
 `api/src/reminders/run.ts`, functional spec §8.5):
 
-- Do nothing without the `RESEND_API_KEY` secret (demo and local dev have none) or before 18:00 NZ.
-- For each team with a To address: today's games from the cached PlayHQ fixture, minus those with a report.
-- Claim `reminder_log (team_slug, game_date)` as `sending` — a new row, or a `failed` one (`attempts + 1`). Anything
-  else means the reminder is already handled, so each team gets at most one a day; a failure is retried by the 06:00
-  run in daylight time.
-- `POST {RESEND_BASE_URL}/emails` with `Idempotency-Key: reminder-{team}-{date}`; record `sent` + Resend id, or
-  `failed` + the error. Each outcome is logged as JSON (`reminder_sent` / `reminder_failed`).
-- Lists live in `team_reminders (team_slug, to_emails, cc_emails)` as JSON arrays (migration `0003_reminders.sql`).
+- Do nothing without the `RESEND_API_KEY` secret (demo and local dev have none), or outside 18:00–22:59 NZ.
+- For each team with a To address: today's games from the cached PlayHQ fixture that have been played — start time
+  (`schedule.time`, NZ local) plus `GAME_HOURS` (3) has passed, or no start time — minus those with a report. PlayHQ's
+  game status isn't used: many games stay `PENDING` for days, or only turn `FINAL` the next day.
+- For each such game, claim `reminder_log (team_slug, game_id)` as `sending` — a new row, or a `failed` one
+  (`attempts + 1`). Anything else means it's already handled, so each game gets at most one reminder, even if it
+  moves to another day; a failure is retried by the next hourly run.
+- One email per game: `POST {RESEND_BASE_URL}/emails` with `Idempotency-Key: reminder-{team}-{gameId}`; record `sent` with
+  the Resend id, or `failed` with the error. Each outcome is logged as JSON (`reminder_sent` / `reminder_failed`).
+- Lists live in `team_reminders (team_slug, to_emails, cc_emails)` as JSON arrays (migration `0003_reminders.sql`); the log is keyed by game since `0004_reminder_per_game.sql`.
 
 ## 11. Errors and observability
 

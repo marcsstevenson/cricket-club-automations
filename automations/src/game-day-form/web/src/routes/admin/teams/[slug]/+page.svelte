@@ -103,7 +103,7 @@
 
   <form class="card" onsubmit={(e) => { e.preventDefault(); onSave(); }}>
     <h2>Reminder emails</h2>
-    <p class="note">At 6 pm on a game day, if this team hasn't filled in its report, these addresses get an email. Put one address per line, or separate them with commas.</p>
+    <p class="note">After each game (from 6 pm that evening), if this team hasn't filled in its report, these addresses get one email. Put one address per line, or separate them with commas.</p>
     <div class="lists">
       <label class="field">To<textarea rows="3" bind:value={to} spellcheck="false" autocomplete="off" class:invalid={error}></textarea></label>
       <label class="field">Cc<textarea rows="3" bind:value={cc} spellcheck="false" autocomplete="off" class:invalid={error}></textarea></label>

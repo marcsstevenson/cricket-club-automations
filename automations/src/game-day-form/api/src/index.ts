@@ -14,7 +14,7 @@ export default {
       );
       return;
     }
-    // 05:00 and 06:00 UTC: game-day reminders (runReminders works out whether it's 6 pm in NZ yet).
+    // Hourly 05:00–10:00 UTC: game-day reminders (runReminders keeps to 6–10 pm in NZ and waits for each game to finish).
     ctx.waitUntil(
       runReminders(env, defaultDeps, (p) => ctx.waitUntil(p))
         .then((r) => console.log(JSON.stringify({ msg: 'reminders', ...r })))

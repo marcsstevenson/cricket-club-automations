@@ -468,13 +468,18 @@ hides them again.
   and a **Cc** list of email addresses (0–10 each; one per line or comma-separated) with **Save reminders**.
   Addresses are stored lower-case, without repeats; a Cc already in To is dropped. A team can't have Cc addresses
   without a To address.
-- **When:** at **6 pm NZ time on a game day**, each team with a To address and a game that day with no report gets
-  **one** email listing those games. A team with no To address gets nothing. There are no follow-up reminders.
+- **When:** only after the game has been played, and only between **6 pm and 10 pm NZ time on the game day**. A game
+  counts as played 3 hours after its PlayHQ start time (a game with no start time, by 6 pm). Checks run on the hour,
+  so a morning game is reminded at 6 pm and a 5:30 pm twilight game at 9 pm. A game that finishes after 10 pm gets no
+  reminder. A team with no To address gets nothing.
+- **How many:** **one** email per game, ever: each game without a report is reminded once, at the first check after
+  it's played. A team with two games that day gets one email for each. There are no follow-up reminders; a send that
+  fails is tried again at the next check that evening.
 - **The email:** from *Parklands Game Day &lt;gameday@parklandscricket.co.nz&gt;*, replies to
   *info@parklandscricket.co.nz*. Subject *Game-day report needed: {Team} v {Opposition}*. It lists the round,
   opposition, date and venue, with a **Fill in the report** link to that game's form. No player names.
 - **Send test:** saves any unsaved changes, then sends a sample to the team's lists straight away, marked *[Test]*, using today's game, else the
-  latest played game, else the next one. A test doesn't count as the day's reminder.
+  latest played game, else the next one. A test doesn't count as a game's reminder.
 - Addresses are admin-only: they never appear on public pages or in the CSV exports.
 
 ---

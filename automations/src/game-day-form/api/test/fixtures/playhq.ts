@@ -4,12 +4,12 @@ export const PUMAS = 'team-pumas';
 export const OPP = 'team-opp';
 export const GRADE = 'grade-y6';
 
-export function v1Game(o: { id: string; date: string | null; opp?: string; status?: string; round?: number; teamId?: string }): V1Game {
+export function v1Game(o: { id: string; date: string | null; time?: string | null; opp?: string; status?: string; round?: number; teamId?: string }): V1Game {
   return {
     id: o.id,
     status: o.status ?? 'FINAL',
     round: { name: `Round ${o.round ?? 1}`, abbreviatedName: `R${o.round ?? 1}` },
-    schedule: o.date ? { date: o.date, time: '09:00:00', timezone: 'Pacific/Auckland' } : null,
+    schedule: o.date ? { date: o.date, ...(o.time === null ? {} : { time: o.time ?? '09:00:00' }), timezone: 'Pacific/Auckland' } : null,
     venue: { name: 'Parklands Reserve' },
     competitors: [
       { id: o.teamId ?? PUMAS, name: 'Parklands Pumas' },

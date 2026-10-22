@@ -85,7 +85,7 @@
 
   <section class="card">
     <h2>Teams</h2>
-    <p class="note">At 6 pm on a game day, teams that haven't filled in their report get an email. Open a team to set who gets it.</p>
+    <p class="note">After each game, from 6 pm that evening, teams that haven't filled in their report get one email. Open a team to set who gets it.</p>
     {#if teams}
       <table class="admin-teams">
         <thead><tr><th>Team</th><th>Grade</th><th>Players</th><th>Reminders</th></tr></thead>

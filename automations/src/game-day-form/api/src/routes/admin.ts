@@ -30,7 +30,7 @@ async function requireAdmin(c: Context<AppEnv>) {
 
 /** A game to show in a test email: today's, else the latest played, else the next one, else a made-up one. */
 async function sampleGame(c: Ctx, team: Team, today: string): Promise<FixtureGame> {
-  const sample: FixtureGame = { gameId: 'sample', date: today, round: 'R1', opposition: 'Example Opposition', venue: 'Parklands Reserve', status: '' };
+  const sample: FixtureGame = { gameId: 'sample', date: today, time: null, round: 'R1', opposition: 'Example Opposition', venue: 'Parklands Reserve', status: '' };
   if (!team.playhqGradeId) return sample;
   try {
     const games = teamFixture((await phq(c).fixture(team.playhqGradeId)).data, team.playhqTeamId).filter((g) => g.date);
