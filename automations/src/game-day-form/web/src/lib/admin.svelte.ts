@@ -28,3 +28,17 @@ export function lock() {
     /* ignore */
   }
 }
+
+/** A request to an admin endpoint with this tab's passcode. A 401 locks the tab again. */
+export async function adminFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const res = await fetch(`/api/admin${path}`, { ...init, headers: { ...init.headers, 'x-admin-passcode': admin.passcode } });
+  if (res.status === 401) lock();
+  return res;
+}
+
+/** The message for a failed admin request. */
+export function adminError(res: Response, body: { message?: string } | null, fallback: string): string {
+  if (res.status === 401) return 'Wrong passcode — enter it again.';
+  if (res.status === 429) return 'Too many requests — wait a minute.';
+  return body?.message ?? fallback;
+}

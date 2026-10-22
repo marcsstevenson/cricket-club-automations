@@ -87,10 +87,28 @@ export interface ApiErrorBody {
   requestId?: string;
 }
 
-/** A team's reminder email lists (admin only). */
-export interface ReminderTeam {
+/** Admin only: one row of the admin teams list. */
+export interface AdminTeamSummary {
   slug: string;
   name: string;
+  gradeName: string;
+  playerCount: number;
+  toCount: number;
+  ccCount: number;
+}
+
+export interface ReminderLists {
   to: string[];
   cc: string[];
+}
+
+/** Admin only: a team's details (read-only, from the squad) and its editable reminder lists. Holds full names. */
+export interface AdminTeamDetail {
+  slug: string;
+  name: string;
+  gradeName: string;
+  playhqGradeId: string;
+  playhqTeamId: string;
+  players: { key: string; firstName: string; lastName: string; playhqId: string; label: string }[];
+  reminders: ReminderLists;
 }

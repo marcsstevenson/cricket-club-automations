@@ -1,9 +1,11 @@
 import type { Context, Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { ApiError, clientIp } from '../errors';
+import type { AdminTeamDetail, AdminTeamSummary, ReminderLists } from '../../../shared/src/api';
 import { nzDate } from '../../../shared/src/dates';
+import { squadLabels } from '../../../shared/src/labels';
 import { teamFixture, type FixtureGame } from '../playhq/fixture';
-import { loadContacts, reminderTeams, saveContacts, validateContacts, type Contacts } from '../reminders/contacts';
+import { loadContacts, saveContacts, validateContacts } from '../reminders/contacts';
 import { reminderEmail, sendEmail } from '../reminders/email';
 import { findTeam, loadSquad, type Team } from '../squad/load';
 import { phq, type Ctx } from './context';
@@ -48,30 +50,47 @@ export function registerAdmin(app: Hono<AppEnv>) {
     await requireAdmin(c);
     return c.json({ ok: true });
   });
-  app.get('/admin/reminders', async (c) => {
+  app.get('/admin/teams', async (c) => {
     await requireAdmin(c);
     const squad = await loadSquad(c.env, c.get('deps').now());
-    return c.json({ teams: reminderTeams(squad, await loadContacts(c.env.DB)) });
+    const contacts = await loadContacts(c.env.DB);
+    const teams: AdminTeamSummary[] = squad.teams.map((t) => ({
+      slug: t.slug,
+      name: t.name,
+      gradeName: t.gradeName ?? '',
+      playerCount: t.players.length,
+      toCount: contacts.get(t.slug)?.to.length ?? 0,
+      ccCount: contacts.get(t.slug)?.cc.length ?? 0,
+    }));
+    return c.json({ teams });
   });
-  app.put('/admin/reminders', async (c) => {
+  app.get('/admin/teams/:team', async (c) => {
+    await requireAdmin(c);
+    const team = findTeam(await loadSquad(c.env, c.get('deps').now()), c.req.param('team'));
+    const labels = squadLabels(team.players);
+    const body: AdminTeamDetail = {
+      slug: team.slug,
+      name: team.name,
+      gradeName: team.gradeName ?? '',
+      playhqGradeId: team.playhqGradeId ?? '',
+      playhqTeamId: team.playhqTeamId,
+      players: team.players.map((p) => ({ key: p.key, firstName: p.firstName, lastName: p.lastName, playhqId: p.playhqId ?? '', label: labels.get(p.key) ?? '' })),
+      reminders: (await loadContacts(c.env.DB)).get(team.slug) ?? { to: [], cc: [] },
+    };
+    return c.json(body);
+  });
+  app.put('/admin/teams/:team/reminders', async (c) => {
     await requireAdmin(c);
     const deps = c.get('deps');
-    const squad = await loadSquad(c.env, deps.now());
-    const body = await c.req.json<{ teams?: Record<string, { to?: unknown; cc?: unknown }> }>().catch(() => ({}) as { teams?: undefined });
-    const input = body.teams && typeof body.teams === 'object' ? Object.entries(body.teams) : [];
-    const lists = new Map<string, Contacts>();
-    const fields: Record<string, string> = {};
-    for (const [slug, value] of input) {
-      if (!squad.teams.some((t) => t.slug === slug)) throw new ApiError(400, 'unknown_team', `There's no team called "${slug}".`);
-      const checked = validateContacts(value ?? {});
-      if (checked.ok) lists.set(slug, { to: checked.to, cc: checked.cc });
-      else fields[slug] = checked.error;
-    }
-    if (Object.keys(fields).length) throw new ApiError(400, 'invalid', 'Check the highlighted teams.', { fields });
-    await saveContacts(c.env.DB, lists, deps.now());
-    return c.json({ teams: reminderTeams(squad, await loadContacts(c.env.DB)) });
+    const team = findTeam(await loadSquad(c.env, deps.now()), c.req.param('team'));
+    const body = await c.req.json<{ to?: unknown; cc?: unknown }>().catch(() => ({}));
+    const checked = validateContacts(body);
+    if (!checked.ok) throw new ApiError(400, 'invalid', checked.error);
+    const lists: ReminderLists = { to: checked.to, cc: checked.cc };
+    await saveContacts(c.env.DB, new Map([[team.slug, lists]]), deps.now());
+    return c.json(lists);
   });
-  app.post('/admin/reminders/:team/test', async (c) => {
+  app.post('/admin/teams/:team/test', async (c) => {
     await requireAdmin(c);
     if (!c.env.RESEND_API_KEY) throw new ApiError(503, 'email_disabled', "Email isn't set up on this site.");
     const deps = c.get('deps');

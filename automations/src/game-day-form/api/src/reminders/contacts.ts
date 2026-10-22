@@ -1,5 +1,3 @@
-import type { ReminderTeam } from '../../../shared/src/api';
-import type { Squad } from '../squad/load';
 
 export const MAX_ADDRESSES = 10;
 const EMAIL = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/;
@@ -38,9 +36,4 @@ export async function saveContacts(db: D1Database, lists: Map<string, Contacts>,
         .bind(slug, JSON.stringify(c.to), JSON.stringify(c.cc), now.toISOString()),
     ),
   );
-}
-
-/** Every squad team with its lists (empty when none are saved). */
-export function reminderTeams(squad: Squad, contacts: Map<string, Contacts>): ReminderTeam[] {
-  return squad.teams.map((t) => ({ slug: t.slug, name: t.name, to: contacts.get(t.slug)?.to ?? [], cc: contacts.get(t.slug)?.cc ?? [] }));
 }

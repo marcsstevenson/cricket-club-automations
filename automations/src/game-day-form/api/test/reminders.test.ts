@@ -1,6 +1,6 @@
 import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ReminderTeam } from '../../shared/src/api';
+import type { AdminTeamDetail, AdminTeamSummary } from '../../shared/src/api';
 import { createApp } from '../src/app';
 import type { Env } from '../src/env';
 import { validateContacts } from '../src/reminders/contacts';
@@ -141,53 +141,79 @@ describe('runReminders', () => {
   });
 });
 
-describe('admin reminder settings', () => {
+describe('admin teams', () => {
   beforeEach(() => seedSquad());
 
-  const json = (method: string, body: unknown) => ({ method, headers: { ...ADMIN, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const putReminders = (slug: string, body: unknown, headers: Record<string, string> = ADMIN) =>
+    call(createApp(testDeps()), `/api/admin/teams/${slug}/reminders`, {
+      method: 'PUT',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
 
   it('needs the admin passcode', async () => {
     const app = createApp(testDeps());
-    expect((await call(app, '/api/admin/reminders')).status).toBe(401);
-    expect((await call(app, '/api/admin/reminders', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: '{}' })).status).toBe(401);
-    expect((await call(app, '/api/admin/reminders/pumas/test', { method: 'POST' })).status).toBe(401);
+    expect((await call(app, '/api/admin/teams')).status).toBe(401);
+    expect((await call(app, '/api/admin/teams/pumas')).status).toBe(401);
+    expect((await putReminders('pumas', { to: [], cc: [] }, {})).status).toBe(401);
+    expect((await call(app, '/api/admin/teams/pumas/test', { method: 'POST' })).status).toBe(401);
   });
 
-  it('lists every squad team, saves the lists, and keeps them out of public pages', async () => {
+  it('lists every squad team with its grade, player count and reminder counts', async () => {
+    await saveContacts('pumas', ['coach@example.com', 'b@x.nz'], ['m@x.nz']);
+    const body = await (await call(createApp(testDeps()), '/api/admin/teams', { headers: ADMIN })).json<{ teams: AdminTeamSummary[] }>();
+    expect(body.teams).toEqual([
+      { slug: 'pumas', name: 'Parklands Pumas', gradeName: 'Year 6 Section 3 (Morning)', playerCount: 4, toCount: 2, ccCount: 1 },
+      { slug: 'tigers', name: 'Parklands Tigers', gradeName: '', playerCount: 0, toCount: 0, ccCount: 0 },
+    ]);
+  });
+
+  it("shows one team's details, players and reminder lists", async () => {
+    await saveContacts('pumas', ['coach@example.com']);
+    const res = await call(createApp(testDeps()), '/api/admin/teams/pumas', { headers: ADMIN });
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const body = await res.json<AdminTeamDetail>();
+    expect(body).toMatchObject({
+      slug: 'pumas',
+      name: 'Parklands Pumas',
+      gradeName: 'Year 6 Section 3 (Morning)',
+      playhqGradeId: 'grade-y6',
+      playhqTeamId: 'team-pumas',
+      reminders: { to: ['coach@example.com'], cc: [] },
+    });
+    expect(body.players[0]).toEqual({ key: 'p001', firstName: 'Alex', lastName: 'Turner', playhqId: 'ph-alex', label: 'Alex T.' });
+    expect(body.players.map((p) => p.label)).toEqual(['Alex T.', 'Sam Th.', 'Sam Ta.', 'Jordan L.']);
+    expect((await call(createApp(testDeps()), '/api/admin/teams/lions', { headers: ADMIN })).status).toBe(404);
+  });
+
+  it("saves a team's reminder lists and keeps them out of public pages", async () => {
+    const res = await putReminders('pumas', { to: ['Coach@Example.com'], cc: ['m@x.nz'] });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ to: ['coach@example.com'], cc: ['m@x.nz'] });
+    expect(await env.DB.prepare("SELECT to_emails FROM team_reminders WHERE team_slug = 'pumas'").first('to_emails')).toBe('["coach@example.com"]');
+
     const r = routes();
     const app = createApp(testDeps({ fetch: r.fetch }));
-    const empty = await (await call(app, '/api/admin/reminders', { headers: ADMIN })).json<{ teams: ReminderTeam[] }>();
-    expect(empty.teams).toEqual([
-      { slug: 'pumas', name: 'Parklands Pumas', to: [], cc: [] },
-      { slug: 'tigers', name: 'Parklands Tigers', to: [], cc: [] },
-    ]);
-
-    const res = await call(app, '/api/admin/reminders', json('PUT', { teams: { pumas: { to: ['Coach@Example.com'], cc: ['m@x.nz'] }, tigers: { to: [], cc: [] } } }));
-    expect(res.status).toBe(200);
-    const saved = await res.json<{ teams: ReminderTeam[] }>();
-    expect(saved.teams[0]).toEqual({ slug: 'pumas', name: 'Parklands Pumas', to: ['coach@example.com'], cc: ['m@x.nz'] });
-
-    const pub = (await (await call(app, '/api/teams')).text()) + (await (await call(app, '/api/games')).text());
+    const pub = (await (await call(app, '/api/teams')).text()) + (await (await call(app, '/api/teams/pumas')).text()) + (await (await call(app, '/api/games')).text());
     expect(pub).not.toContain('coach@example.com');
   });
 
-  it('rejects bad lists and unknown teams without saving anything', async () => {
-    const app = createApp(testDeps());
-    const bad = await call(app, '/api/admin/reminders', json('PUT', { teams: { pumas: { to: ['ok@x.nz'], cc: [] }, tigers: { to: ['nope'], cc: [] } } }));
+  it('rejects bad lists and unknown teams without saving', async () => {
+    const bad = await putReminders('pumas', { to: ['nope'], cc: [] });
     expect(bad.status).toBe(400);
-    expect(await bad.json()).toMatchObject({ fields: { tigers: expect.stringContaining('nope') } });
+    expect(await bad.json()).toMatchObject({ message: expect.stringContaining('nope') });
+    expect((await putReminders('pumas', { to: [], cc: ['m@x.nz'] })).status).toBe(400);
+    expect((await putReminders('lions', { to: [], cc: [] })).status).toBe(404);
     expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM team_reminders').first('n')).toBe(0);
-
-    const unknown = await call(app, '/api/admin/reminders', json('PUT', { teams: { lions: { to: [], cc: [] } } }));
-    expect(unknown.status).toBe(400);
   });
 
   it('sends a test email to the saved lists', async () => {
     await saveContacts('pumas', ['coach@example.com'], ['m@x.nz']);
     const r = routes();
     const app = createApp(testDeps({ fetch: r.fetch }));
-    const res = await call(app, '/api/admin/reminders/pumas/test', { method: 'POST', headers: ADMIN });
+    const res = await call(app, '/api/admin/teams/pumas/test', { method: 'POST', headers: ADMIN });
     expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, sentTo: ['coach@example.com', 'm@x.nz'] });
     expect(r.sent).toHaveLength(1);
     expect(r.sent[0].body).toMatchObject({ to: ['coach@example.com'], cc: ['m@x.nz'], subject: expect.stringMatching(/^\[Test\] Game-day report needed: Parklands Pumas v /) });
     expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM reminder_log').first('n')).toBe(0); // a test doesn't count as the day's reminder
@@ -196,17 +222,17 @@ describe('admin reminder settings', () => {
   it('explains when a test email cannot be sent', async () => {
     const r = routes(() => Response.json({ message: 'The gameday@ domain is not verified' }, { status: 403 }));
     const app = createApp(testDeps({ fetch: r.fetch }));
-    const none = await call(app, '/api/admin/reminders/tigers/test', { method: 'POST', headers: ADMIN });
+    const none = await call(app, '/api/admin/teams/tigers/test', { method: 'POST', headers: ADMIN });
     expect(none.status).toBe(400);
     expect(await none.json()).toMatchObject({ message: 'Save at least one To address first.' });
 
     await saveContacts('pumas', ['coach@example.com']);
-    const refused = await call(app, '/api/admin/reminders/pumas/test', { method: 'POST', headers: ADMIN });
+    const refused = await call(app, '/api/admin/teams/pumas/test', { method: 'POST', headers: ADMIN });
     expect(refused.status).toBe(502);
     expect(await refused.json()).toMatchObject({ message: expect.stringContaining('not verified') });
 
     const ctx = createExecutionContext();
-    const off = await app.request('/api/admin/reminders/pumas/test', { method: 'POST', headers: ADMIN }, { ...env, RESEND_API_KEY: '' }, ctx);
+    const off = await app.request('/api/admin/teams/pumas/test', { method: 'POST', headers: ADMIN }, { ...env, RESEND_API_KEY: '' }, ctx);
     await waitOnExecutionContext(ctx);
     expect(off.status).toBe(503);
   });

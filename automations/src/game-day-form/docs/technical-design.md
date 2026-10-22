@@ -425,9 +425,10 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 | `GET /api/export/games.csv` | same filters | CSV | Public: labels + player keys only. |
 | `GET /api/export/milestones.csv` | same filters | CSV | Public: labels + player keys only. |
 | `GET /api/admin/export/games.csv`, `…/milestones.csv` | header `X-Admin-Passcode` | CSV | Adds full-name columns. `401` on wrong passcode; `ADMIN_LIMIT` per IP. Constant-time compare. |
-| `GET /api/admin/reminders` | header `X-Admin-Passcode` | `{teams:[ReminderTeam]}` | Every squad team with its To/Cc lists. |
-| `PUT /api/admin/reminders` | `{teams:{slug:{to,cc}}}` | `{teams}` | Validates all teams first; `400` with `fields` per team, or for an unknown slug. Saves nothing on error. |
-| `POST /api/admin/reminders/:team/test` | — | `{ok, sentTo}` | Sends a *[Test]* reminder to the saved lists. `400` no To address, `503` no Resend key, `502` Resend refused (message included). |
+| `GET /api/admin/teams` | header `X-Admin-Passcode` | `{teams:[AdminTeamSummary]}` | Every squad team: grade, player count, To/Cc counts. |
+| `GET /api/admin/teams/:team` | header `X-Admin-Passcode` | `AdminTeamDetail` | Team details and players with **full names** (read-only), plus its reminder lists. |
+| `PUT /api/admin/teams/:team/reminders` | `{to, cc}` | `{to, cc}` | `400` with a message on a bad list; `404` unknown team. |
+| `POST /api/admin/teams/:team/test` | — | `{ok, sentTo}` | Sends a *[Test]* reminder to the saved lists. `400` no To address, `503` no Resend key, `502` Resend refused (message included). |
 
 ### 9.1 Server-side save checks (beyond shared validation)
 
