@@ -457,9 +457,23 @@ full names there, but this is not enforced.
 ### 8.4 Admin exports
 
 **Link:** `…/admin`. Asks for the club's admin passcode, then offers the same two CSVs with an added
-**full name** column for every player column. Wrong passcodes are limited to 5 attempts a minute. Once accepted, the
+**full name** column for every player column. Admin requests are limited to 10 a minute. Once accepted, the
 header shows **All games** and **Admin** menu items for the rest of that browser tab; a later wrong-passcode response
 hides them again.
+
+### 8.5 Reminder emails
+
+- **Who:** on the admin page, each team has a **To** list and a **Cc** list of email addresses (0–10 each; one per
+  line or comma-separated). Addresses are stored lower-case, without repeats; a Cc already in To is dropped. A team
+  can't have Cc addresses without a To address. **Save reminder emails** saves every team at once.
+- **When:** at **6 pm NZ time on a game day**, each team with a To address and a game that day with no report gets
+  **one** email listing those games. A team with no To address gets nothing. There are no follow-up reminders.
+- **The email:** from *Parklands Game Day &lt;gameday@parklandscricket.co.nz&gt;*, replies to
+  *info@parklandscricket.co.nz*. Subject *Game-day report needed: {Team} v {Opposition}*. It lists the round,
+  opposition, date and venue, with a **Fill in the report** link to that game's form. No player names.
+- **Send test:** sends a sample to the team's saved lists straight away, marked *[Test]*, using today's game, else the
+  latest played game, else the next one. A test doesn't count as the day's reminder.
+- Addresses are admin-only: they never appear on public pages or in the CSV exports.
 
 ---
 
@@ -496,7 +510,7 @@ Numeric fields accept digits only.
 ## 11. Out of scope
 
 - Season tallies (counts per player) — done from the exports.
-- Notifications to admins (email/Teams).
+- Notifications to admins (email/Teams). (Reminder emails to teams are in scope — §8.5.)
 - Past seasons.
 - Reconciling "Other" names with the squad (done by the admin from the admin export).
 - Editing the squad or teams through the form.

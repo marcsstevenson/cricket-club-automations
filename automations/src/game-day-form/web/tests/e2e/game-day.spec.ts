@@ -128,6 +128,29 @@ test('All games and Admin menu items appear only after the admin passcode is acc
   await expect(nav.getByRole('link', { name: 'Admin' })).toBeVisible();
 });
 
+test('admin saves reminder emails and sends a test', async ({ page, request }) => {
+  await page.goto('/admin');
+  await page.getByLabel('Admin passcode').fill('e2e-pass');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  const pumas = page.locator('.reminder-team', { hasText: 'Parklands Pumas' });
+  await expect(page.locator('.reminder-team')).toHaveCount(2);
+
+  await pumas.getByLabel('Cc').fill('manager@example.com');
+  await page.getByRole('button', { name: 'Save reminder emails' }).click();
+  await expect(pumas.getByText('Add a To address before any Cc addresses.')).toBeVisible();
+
+  await pumas.getByLabel('To', { exact: true }).fill('Coach@Example.com, second@example.com');
+  await page.getByRole('button', { name: 'Save reminder emails' }).click();
+  await expect(page.getByText('Reminder emails saved.')).toBeVisible();
+  await expect(pumas.getByLabel('To', { exact: true })).toHaveValue('coach@example.com\nsecond@example.com');
+
+  await pumas.getByRole('button', { name: 'Send test' }).click();
+  await expect(pumas.getByText('Test sent to coach@example.com, second@example.com, manager@example.com.')).toBeVisible();
+  const sent = await (await request.get('http://127.0.0.1:8790/emails')).json();
+  expect(sent.at(-1)).toMatchObject({ to: ['coach@example.com', 'second@example.com'], cc: ['manager@example.com'] });
+  expect(sent.at(-1).subject).toMatch(/^\[Test\] Game-day report needed: Parklands Pumas v /);
+});
+
 test('all games marks the unreported past game as Missing', async ({ page }) => {
   await page.goto('/games');
   await page.getByLabel('Day').selectOption({ label: 'All days' });

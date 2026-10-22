@@ -6,5 +6,5 @@
   "d1_databases": [{ "binding": "DB", "database_name": "test", "database_id": "test" }],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "test" }],
   "kv_namespaces": [{ "binding": "CONFIG", "id": "test" }],
-  "vars": { "PLAYHQ_TENANT": "nzc", "PLAYHQ_ORG_ID": "org-test", "PLAYHQ_BASE_URL": "https://api.playhq.com" }
+  "vars": { "PLAYHQ_TENANT": "nzc", "PLAYHQ_ORG_ID": "org-test", "PLAYHQ_BASE_URL": "https://api.playhq.com", "RESEND_BASE_URL": "https://api.resend.com", "SITE_URL": "https://gameday.parklandscricket.co.nz" }
 }

@@ -14,6 +14,11 @@ export interface Env {
   PLAYHQ_ORG_ID: string;
   PLAYHQ_BASE_URL: string;
   ADMIN_PASSCODE: string;
+  /** Resend API key (Worker secret). Without it, no reminder emails are sent. */
+  RESEND_API_KEY?: string;
+  RESEND_BASE_URL: string;
+  /** Public site address, for links in emails. */
+  SITE_URL: string;
   /** Demo environment only: ISO timestamp the server treats as "now". */
   FAKE_NOW?: string;
 }

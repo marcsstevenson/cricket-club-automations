@@ -45,14 +45,27 @@ const summary = (id, withStats) => ({
     : [],
 });
 
+// Resend stand-in for e2e: POST /emails records the email, GET /emails lists what was sent.
+const emails = [];
+
 createServer((req, res) => {
   const path = new URL(req.url, 'http://x').pathname;
   const send = (body) => {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify(body));
   };
+  if (path === '/emails' && req.method === 'POST') {
+    let raw = '';
+    req.on('data', (c) => (raw += c));
+    req.on('end', () => {
+      emails.push(JSON.parse(raw));
+      send({ id: `em_${emails.length}` });
+    });
+    return;
+  }
+  if (path === '/emails') return send(emails);
   if (path === '/v1/grades/grade-y6/games') return send({ data: games, metadata: { hasMore: false, nextCursor: null } });
   const m = path.match(/^\/v2\/games\/(e2e-g[123])\/summary$/);
   if (m) return send({ data: summary(m[1], m[1] === 'e2e-g2') });
   res.writeHead(404).end();
-}).listen(8790, '127.0.0.1', () => console.log('PlayHQ stub on http://127.0.0.1:8790'));
+}).listen(8790, '127.0.0.1', () => console.log('PlayHQ and Resend stub on http://127.0.0.1:8790'));

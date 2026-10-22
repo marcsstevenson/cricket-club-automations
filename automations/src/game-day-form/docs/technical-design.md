@@ -111,10 +111,11 @@ docs/                   functional-spec.md, technical-design.md
   "ratelimits": [
     { "name": "WRITE_LIMIT",   "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
     { "name": "REFRESH_LIMIT", "namespace_id": "1002", "simple": { "limit": 1,  "period": 60 } },
-    { "name": "ADMIN_LIMIT",   "namespace_id": "1003", "simple": { "limit": 5,  "period": 60 } }
+    { "name": "ADMIN_LIMIT",   "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } }
   ],
-  "triggers": { "crons": ["0 14 * * *"] },
-  "vars": { "PLAYHQ_TENANT": "nzc", "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74" },
+  "triggers": { "crons": ["0 14 * * *", "0 5 * * *", "0 6 * * *"] },
+  "vars": { "PLAYHQ_TENANT": "nzc", "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",
+            "RESEND_BASE_URL": "https://api.resend.com", "SITE_URL": "https://gameday.parklandscricket.co.nz" },
   "observability": { "enabled": true }
 }
 ```
@@ -424,6 +425,9 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 | `GET /api/export/games.csv` | same filters | CSV | Public: labels + player keys only. |
 | `GET /api/export/milestones.csv` | same filters | CSV | Public: labels + player keys only. |
 | `GET /api/admin/export/games.csv`, `…/milestones.csv` | header `X-Admin-Passcode` | CSV | Adds full-name columns. `401` on wrong passcode; `ADMIN_LIMIT` per IP. Constant-time compare. |
+| `GET /api/admin/reminders` | header `X-Admin-Passcode` | `{teams:[ReminderTeam]}` | Every squad team with its To/Cc lists. |
+| `PUT /api/admin/reminders` | `{teams:{slug:{to,cc}}}` | `{teams}` | Validates all teams first; `400` with `fields` per team, or for an unknown slug. Saves nothing on error. |
+| `POST /api/admin/reminders/:team/test` | — | `{ok, sentTo}` | Sends a *[Test]* reminder to the saved lists. `400` no To address, `503` no Resend key, `502` Resend refused (message included). |
 
 ### 9.1 Server-side save checks (beyond shared validation)
 
@@ -443,12 +447,24 @@ All responses are JSON unless noted. Errors: `{ "error": "<code>", "message": "<
 - Columns follow functional spec §8.3 as amended (§13): public files use `label` + `player_key` (or `named_id`);
   admin files add `full_name`.
 
-## 10. Scheduled job
+## 10. Scheduled jobs
 
 Daily cron (`0 14 * * *` UTC ≈ 2–3 am NZ):
 
 - Delete photos with `report_id IS NULL AND created_at < now − 24 h` from R2 and D1.
 - Delete photos detached by an edit (also `report_id IS NULL`) the same way.
+
+Reminder crons (`0 5 * * *` and `0 6 * * *` UTC — one of them is 6 pm NZ in both daylight and standard time;
+`api/src/reminders/run.ts`, functional spec §8.5):
+
+- Do nothing without the `RESEND_API_KEY` secret (demo and local dev have none) or before 18:00 NZ.
+- For each team with a To address: today's games from the cached PlayHQ fixture, minus those with a report.
+- Claim `reminder_log (team_slug, game_date)` as `sending` — a new row, or a `failed` one (`attempts + 1`). Anything
+  else means the reminder is already handled, so each team gets at most one a day; a failure is retried by the 06:00
+  run in daylight time.
+- `POST {RESEND_BASE_URL}/emails` with `Idempotency-Key: reminder-{team}-{date}`; record `sent` + Resend id, or
+  `failed` + the error. Each outcome is logged as JSON (`reminder_sent` / `reminder_failed`).
+- Lists live in `team_reminders (team_slug, to_emails, cc_emails)` as JSON arrays (migration `0003_reminders.sql`).
 
 ## 11. Errors and observability
 

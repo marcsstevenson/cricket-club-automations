@@ -22,13 +22,16 @@
   "ratelimits": [
     { "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
     { "name": "REFRESH_LIMIT", "namespace_id": "1002", "simple": { "limit": 1, "period": 60 } },
-    { "name": "ADMIN_LIMIT", "namespace_id": "1003", "simple": { "limit": 5, "period": 60 } }
+    { "name": "ADMIN_LIMIT", "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } }
   ],
-  "triggers": { "crons": ["0 14 * * *"] },
+  // 14:00 UTC: photo cleanup. 05:00 and 06:00 UTC: game-day reminders (one of them is 6 pm in NZ, whatever the season).
+  "triggers": { "crons": ["0 14 * * *", "0 5 * * *", "0 6 * * *"] },
   "vars": {
     "PLAYHQ_TENANT": "nzc",
     "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",
-    "PLAYHQ_BASE_URL": "https://api.playhq.com"
+    "PLAYHQ_BASE_URL": "https://api.playhq.com",
+    "RESEND_BASE_URL": "https://api.resend.com",
+    "SITE_URL": "https://gameday.parklandscricket.co.nz"
   },
   "observability": { "enabled": true },
 
@@ -45,13 +48,15 @@
       "ratelimits": [
         { "name": "WRITE_LIMIT", "namespace_id": "2001", "simple": { "limit": 30, "period": 60 } },
         { "name": "REFRESH_LIMIT", "namespace_id": "2002", "simple": { "limit": 1, "period": 60 } },
-        { "name": "ADMIN_LIMIT", "namespace_id": "2003", "simple": { "limit": 5, "period": 60 } }
+        { "name": "ADMIN_LIMIT", "namespace_id": "2003", "simple": { "limit": 10, "period": 60 } }
       ],
       "triggers": { "crons": ["0 14 * * *"] },
       "vars": {
         "PLAYHQ_TENANT": "nzc",
         "PLAYHQ_ORG_ID": "73ce5541-a7ac-457a-a912-d6408aa96a74",
         "PLAYHQ_BASE_URL": "https://api.playhq.com",
+        "RESEND_BASE_URL": "https://api.resend.com",
+        "SITE_URL": "https://gameday-demo.parklandscricket.co.nz",
         "FAKE_NOW": "2026-03-21T08:00:00Z"
       }
     }

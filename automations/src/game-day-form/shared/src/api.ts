@@ -86,3 +86,11 @@ export interface ApiErrorBody {
   latest?: ReportOut | null;
   requestId?: string;
 }
+
+/** A team's reminder email lists (admin only). */
+export interface ReminderTeam {
+  slug: string;
+  name: string;
+  to: string[];
+  cc: string[];
+}

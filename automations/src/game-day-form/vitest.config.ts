@@ -8,7 +8,7 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: './wrangler.test.jsonc' },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations, PLAYHQ_API_KEY: 'test-key', ADMIN_PASSCODE: 'letmein' },
+          bindings: { TEST_MIGRATIONS: migrations, PLAYHQ_API_KEY: 'test-key', ADMIN_PASSCODE: 'letmein', RESEND_API_KEY: 'test-resend' },
         },
       }),
     ],
