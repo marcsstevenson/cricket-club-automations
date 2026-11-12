@@ -1,0 +1,106 @@
+# Weekly off-Cloudflare backup of the production data:
+#   - D1 pcc-game-day and pcc-gear-counter, as SQL dumps (kept 90 days)
+#   - R2 pcc-game-day-photos, every photo the game-day database references (kept 35 days)
+# KV is not backed up: it holds expiring PlayHQ cache entries plus the squad list,
+# which the refresh-squad skill rebuilds from SharePoint.
+#
+# Needs two repository secrets:
+#   CLOUDFLARE_API_TOKEN   account token with "D1: Edit" and "Workers R2 Storage: Read"
+#   CLOUDFLARE_ACCOUNT_ID  the Cloudflare account ID
+#
+# To restore a database into a local copy for inspection:
+#   npx wrangler d1 execute pcc-game-day --local --file pcc-game-day.sql
+# For a production rollback within the last few weeks, D1 Time Travel is quicker:
+#   npx wrangler d1 time-travel restore pcc-game-day --timestamp <ISO time>
+
+name: Back up Cloudflare data
+
+on:
+  schedule:
+    - cron: '0 14 * * 0' # Sunday 14:00 UTC = early Monday morning in NZ
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-cloudflare
+  cancel-in-progress: false
+
+env:
+  WRANGLER: npx --yes wrangler@4.147.0
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  WRANGLER_SEND_METRICS: 'false'
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set backup date
+        run: echo "STAMP=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+
+      - name: Export D1 databases
+        run: |
+          set -euo pipefail
+          mkdir -p backup/d1
+          for db in pcc-game-day pcc-gear-counter; do
+            $WRANGLER d1 export "$db" --remote --output "backup/d1/$db.sql"
+          done
+
+      - name: Check the dumps load and hold data
+        run: |
+          set -euo pipefail
+          for f in backup/d1/*.sql; do
+            rm -f check.db
+            sqlite3 check.db < "$f"
+            tables=$(sqlite3 check.db "SELECT count(*) FROM sqlite_master WHERE type='table'")
+            inserts=$(grep -c '^INSERT' "$f" || true)
+            echo "$f: $tables tables, $inserts rows"
+            if [ "$tables" -lt 1 ] || [ "$inserts" -lt 1 ]; then
+              echo "::error::$f looks empty"; exit 1
+            fi
+          done
+          rm -f check.db
+
+      - name: Download game-day photos from R2
+        run: |
+          set -euo pipefail
+          mkdir -p backup/photos
+          $WRANGLER d1 execute pcc-game-day --remote --json \
+            --command "SELECT r2_key FROM photos" > photo-keys.json
+          jq -r '.[0].results[].r2_key' photo-keys.json > photo-keys.txt
+          echo "$(wc -l < photo-keys.txt) photos referenced"
+          missing=0
+          while IFS= read -r key; do
+            [ -n "$key" ] || continue
+            mkdir -p "backup/photos/$(dirname "$key")"
+            if ! $WRANGLER r2 object get "pcc-game-day-photos/$key" --remote --file "backup/photos/$key" > /dev/null; then
+              echo "::warning::could not download $key"; missing=$((missing + 1))
+            fi
+          done < photo-keys.txt
+          cp photo-keys.txt backup/photos/keys.txt
+          if [ "$missing" -gt 0 ]; then
+            echo "::error::$missing photos failed to download"; exit 1
+          fi
+
+      - name: Keep the database dumps
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-backup-${{ env.STAMP }}
+          path: backup/d1
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Keep the photos
+        uses: actions/upload-artifact@v4
+        with:
+          name: photos-backup-${{ env.STAMP }}
+          path: backup/photos
+          retention-days: 35
+          if-no-files-found: error
