@@ -103,6 +103,29 @@ const have = new Set();
   }
 })(outDir);
 
+// A 64-bit "difference hash" of how an image looks, robust to resizing and re-compression.
+const sharp = (await import('sharp')).default;
+const LOOKS_SAME = 6;
+async function looks(file) {
+  const { data } = await sharp(file).rotate().greyscale().resize(9, 8, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+  let h = 0n;
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) h = (h << 1n) | (data[y * 9 + x] > data[y * 9 + x + 1] ? 1n : 0n);
+  return h;
+}
+function distance(a, b) {
+  let x = a ^ b, n = 0;
+  for (; x; x >>= 1n) n += Number(x & 1n);
+  return n;
+}
+async function matchesGameDayPhoto(dir, file) {
+  if (!existsSync(dir)) return false;
+  const h = await looks(file);
+  for (const f of readdirSync(dir)) {
+    if (/\.(jpe?g|png)$/i.test(f) && !/ WhatsApp /.test(f) && distance(await looks(join(dir, f)), h) <= LOOKS_SAME) return true;
+  }
+  return false;
+}
+
 const safe = (s) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim();
 const counts = { copied: 0, duplicate: 0, unsorted: 0, messages: 0 };
 const messages = new Map(); // file -> { header, texts }
@@ -115,6 +138,7 @@ for (const [file, hdr] of Object.entries(meta.media)) {
   const posted = isoDate(d ?? when);
   const key = senderKey(who);
   const slug = lookup(key, posted, time);
+  if (slug === 'skip') continue; // posts you've chosen not to file
   const post = findPost(key, posted, time);
   const sender = safe(post?.name ?? key);
   const team = slug ? teamName.get(slug) ?? slug : UNSORTED;
@@ -128,7 +152,7 @@ for (const [file, hdr] of Object.entries(meta.media)) {
   if (slug && existsSync(unsortedDir)) {
     for (const f of readdirSync(unsortedDir)) if (f.includes(` ${hash.slice(0, 8)}.`)) rmSync(join(unsortedDir, f));
   }
-  if (have.has(hash)) counts.duplicate++;
+  if (have.has(hash) || (slug && (await matchesGameDayPhoto(teamDir, src)))) counts.duplicate++;
   else if (!slug && existsSync(teamDir) && readdirSync(teamDir).some((f) => f.includes(` ${hash.slice(0, 8)}.`))) counts.duplicate++;
   else {
     copyFileSync(src, join(teamDir, `${date} WhatsApp ${sender} ${hash.slice(0, 8)}.jpg`));
@@ -152,7 +176,28 @@ for (const [file, { header, texts }] of messages) {
   counts.messages++;
 }
 
+// Parents often post the same photo to the Game Day app and to WhatsApp. The two copies have
+// different bytes, so compare how they look: a WhatsApp photo that matches a Game Day photo
+// of the same team is removed (the Game Day copy is kept). Only WhatsApp-vs-Game-Day pairs
+// are compared, so burst shots a parent posted together are all kept.
+let removed = 0;
+for (const e of readdirSync(outDir, { withFileTypes: true })) {
+  if (!e.isDirectory() || e.name.startsWith('_')) continue;
+  const dir = join(outDir, e.name);
+  const files = readdirSync(dir).filter((f) => /\.(jpe?g|png)$/i.test(f));
+  const app = files.filter((f) => !/ WhatsApp /.test(f));
+  if (!app.length) continue;
+  const appHashes = await Promise.all(app.map((f) => looks(join(dir, f))));
+  for (const f of files.filter((f) => / WhatsApp /.test(f))) {
+    const h = await looks(join(dir, f));
+    if (appHashes.some((a) => distance(a, h) <= LOOKS_SAME)) {
+      rmSync(join(dir, f));
+      removed++;
+    }
+  }
+}
+
 console.log(
-  `photos: ${counts.copied} copied, ${counts.duplicate} already there; ` +
+  `photos: ${counts.copied - removed} copied, ${counts.duplicate} already there, ${removed} removed as copies of Game Day photos; ` +
     `${counts.unsorted} from unknown senders in _Unsorted (WhatsApp); ${counts.messages} message files written`,
 );
