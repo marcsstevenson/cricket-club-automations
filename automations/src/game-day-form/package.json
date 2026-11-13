@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit && npm --prefix web run check",
     "mascots": "tsx scripts/prepare-mascots.ts",
     "highlights": "node scripts/download-highlights.mjs",
+    "whatsapp-snaps": "node scripts/import-whatsapp-snaps.mjs",
     "e2e:prepare": "node -e \"require('fs').rmSync('.wrangler/state',{recursive:true,force:true})\" && npm run build:web && wrangler d1 migrations apply pcc-game-day --local && wrangler kv key put squad --path=api/test/fixtures/squad.json --binding=CONFIG --local",
     "e2e": "playwright test",
     "deploy": "npm run build && wrangler d1 migrations apply pcc-game-day --remote && wrangler deploy"
