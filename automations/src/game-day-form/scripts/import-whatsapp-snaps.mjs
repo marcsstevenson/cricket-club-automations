@@ -73,9 +73,11 @@ for (const m of meta.captions) {
   const lines = m.lines.filter((l) => !/^([A-Z]|\+\d+|\d+)$/.test(l));
   const phone = lines.find((l) => PHONE.test(l)) ?? null;
   const time = lines.find((l) => TIME.test(l)) ?? null;
-  const name = lines[0] && !PHONE.test(lines[0]) && !TIME.test(lines[0]) ? lines[0].replace(/^~\s*/, '') : last?.name;
-  const text = lines.filter((l, i) => i > 0 && !PHONE.test(l) && !TIME.test(l)).join('\n').trim();
-  last = { name, phone: phone ?? last?.phone ?? null, date: isoDate(m.date), time, text };
+  // A message without a name line continues the previous sender's run.
+  const named = lines[0] && !PHONE.test(lines[0]) && !TIME.test(lines[0]);
+  const name = named ? lines[0].replace(/^~\s*/, '') : last?.name;
+  const text = lines.filter((l, i) => (named ? i > 0 : true) && !PHONE.test(l) && !TIME.test(l)).join('\n').trim();
+  last = { name, phone: phone ?? (named ? null : last?.phone ?? null), date: isoDate(m.date), time, text };
   posts.push(last);
 }
 
