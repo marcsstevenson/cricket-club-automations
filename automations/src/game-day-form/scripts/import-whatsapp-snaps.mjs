@@ -149,6 +149,8 @@ for (const [file, hdr] of Object.entries(meta.media)) {
 
   const bytes = readFileSync(src);
   const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+  // Photos you've removed by hand (e.g. a near-identical shot of a Game Day photo), by the id in the filename.
+  if (config.skipPhotos?.includes(hash.slice(0, 8))) continue;
   if (slug && existsSync(unsortedDir)) {
     for (const f of readdirSync(unsortedDir)) if (f.includes(` ${hash.slice(0, 8)}.`)) rmSync(join(unsortedDir, f));
   }
