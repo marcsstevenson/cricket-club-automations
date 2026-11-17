@@ -29,6 +29,12 @@ const outDir = resolve(
 
 const meta = JSON.parse(readFileSync(join(inDir, 'gds_meta.json'), 'utf8'));
 const config = JSON.parse(readFileSync(join(outDir, '_whatsapp-senders.json'), 'utf8'));
+// Spelling fixes kept in _corrections.json, so a re-run doesn't undo them.
+let fixes = [];
+try {
+  fixes = JSON.parse(readFileSync(join(outDir, '_corrections.json'), 'utf8')).fixes ?? [];
+} catch {}
+const fix = (s) => fixes.reduce((t, [from, to]) => t.split(from).join(to), s);
 
 // Team names from the squad list, game dates from production.
 const squad = JSON.parse(readFileSync(join(projectDir, 'squad.json'), 'utf8'));
@@ -165,7 +171,7 @@ for (const [file, hdr] of Object.entries(meta.media)) {
   if (post?.text) {
     const msgFile = join(teamDir, `${date} WhatsApp ${sender} message.txt`);
     const entry = messages.get(msgFile) ?? { header: `${sender}${post.phone ? ` (${post.phone})` : ''}, Game Day Snaps`, texts: new Map() };
-    entry.texts.set(`${posted} ${time}`, post.text);
+    entry.texts.set(`${posted} ${time}`, fix(post.text));
     messages.set(msgFile, entry);
   }
 }

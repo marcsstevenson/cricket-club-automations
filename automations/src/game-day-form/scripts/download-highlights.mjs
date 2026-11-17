@@ -47,6 +47,12 @@ try {
   const squad = JSON.parse(readFileSync(join(projectDir, 'squad.json'), 'utf8'));
   for (const t of squad.teams ?? []) teamNames.set(t.slug, t.name);
 } catch {}
+// Spelling fixes kept in _corrections.json next to the output, so a re-run doesn't undo them.
+let fixes = [];
+try {
+  fixes = JSON.parse(readFileSync(join(outDir, '_corrections.json'), 'utf8')).fixes ?? [];
+} catch {}
+const fix = (s) => fixes.reduce((t, [from, to]) => t.split(from).join(to), s);
 const teamName = (slug) => teamNames.get(slug) ?? slug;
 const safe = (s) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim();
 
@@ -69,7 +75,7 @@ for (const r of reports) {
   const teamDir = join(outDir, safe(name));
   mkdirSync(teamDir, { recursive: true });
 
-  const text = (r.highlights ?? '').trim();
+  const text = fix((r.highlights ?? '').trim());
   if (text) {
     const score = (runs, wkts) => (runs == null ? null : wkts == null ? `${runs}` : `${runs}/${wkts}`);
     const us = score(r.team_runs, r.team_wkts);
