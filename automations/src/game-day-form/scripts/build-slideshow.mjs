@@ -9,6 +9,11 @@
 //
 // Keys: F full screen, Space pause, arrows back/forward. ?secs=8 in the URL changes photo time.
 // Phone numbers never appear on screen.
+//
+// Every game gets a slide with its result (win/loss, score, player and mascot of the day) from the Game Day
+// app's public games export, so teams without highlights still appear. Award names are
+// "First L." as the export gives them. The club-night date in the title (e.g. 2026.11.21) gets
+// a "result to come" line for each team.
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -28,6 +33,86 @@ const safe = (s) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim();
 const byFolder = new Map(squad.teams.map((t) => [safe(t.name), t]));
 
 copyFileSync(join(projectDir, 'web/static/brand/pcc-logo-horizontal-dark.svg'), join(assetDir, 'logo.svg'));
+
+// ---- Game results from the Game Day app (public export: First L. names only).
+const RESULTS_URL = 'https://gameday.parklandscricket.co.nz/api/export/games.csv';
+const MILESTONES_URL = 'https://gameday.parklandscricket.co.nz/api/export/milestones.csv';
+const nightDate = (title.match(/(\d{4})\.(\d{2})\.(\d{2})/) ?? []).slice(1).join('-') || null;
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const [head, ...body] = rows.filter((r) => r.some(Boolean));
+  return body.map((r) => Object.fromEntries(head.map((h, i) => [h.replace(/^\uFEFF/, ''), r[i] ?? ''])));
+}
+
+async function loadCsv(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return parseCsv(await res.text());
+  } catch (err) {
+    console.warn(`${url} not loaded (${err.message}); the slideshow will be missing that data.`);
+    return [];
+  }
+}
+
+const score = (runs, wkts) => (runs === '' ? null : wkts === '' ? runs : `${runs}/${wkts}`);
+const opponent = (o) => (o || '').replace(/^Parklands /, '').replace(/ 20\d\d /, ' ');
+// Batting/bowling milestones and hat-tricks, keyed by team and game date.
+const milestones = new Map();
+for (const m of await loadCsv(MILESTONES_URL)) {
+  const k = `${m.Team}|${m.Date}`;
+  const v = m['Runs or wickets'];
+  const text = m.Type === 'Batting' ? `${v} runs` : m.Type === 'Bowling' ? `${v} wicket${v === '1' ? '' : 's'}` : 'Hat-trick!';
+  const list = milestones.get(k) ?? [];
+  list.push({ who: m.Player, type: m.Type, text });
+  milestones.set(k, list);
+}
+
+const resultsByTeam = new Map();
+for (const r of await loadCsv(RESULTS_URL)) {
+  if (!r.Date || r.Status === 'Upcoming' && r.Date !== nightDate) continue;
+  const list = resultsByTeam.get(r.Team) ?? [];
+  const played = r.Status === 'Reported';
+  list.push({
+    date: r.Date,
+    round: r.Round,
+    opp: opponent(r.Opposition),
+    // Win/loss on runs, as entered in Game Day (junior formats already include any wicket penalties).
+    outcome: played && r['Team runs'] !== '' && r['Opposition runs'] !== ''
+      ? (+r['Team runs'] > +r['Opposition runs'] ? 'Win' : +r['Team runs'] < +r['Opposition runs'] ? 'Loss' : 'Tie')
+      : null,
+    us: played ? score(r['Team runs'], r['Team wickets']) : null,
+    them: played ? score(r['Opposition runs'], r['Opposition wickets']) : null,
+    notPlayed: r.Status === 'Not played' ? r['Not played reason'] || 'Not played' : null,
+    potd: played ? r['Player of the day'] || null : null,
+    mascot: played ? r['Mascot of the day'] || null : null,
+    pending: !played && r.Status !== 'Not played',
+    milestones: played ? milestones.get(`${r.Team}|${r.Date}`) ?? [] : [],
+  });
+  resultsByTeam.set(r.Team, list);
+}
+function teamResults(name) {
+  const list = [...(resultsByTeam.get(name) ?? [])];
+  if (nightDate && !list.some((g) => g.date === nightDate))
+    list.push({ date: nightDate, round: '', opp: null, us: null, them: null, potd: null, mascot: null, pending: true });
+  return list.sort((a, b) => a.date.localeCompare(b.date));
+}
 
 const PHONE = /^\+\d[\d ]{6,}$/;
 const read = (p) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n').trim();
@@ -104,12 +189,40 @@ for (const e of readdirSync(outDir, { withFileTypes: true })) {
   const list = [...dates.values()]
     .filter((d) => d.photos.length || d.texts.length)
     .map(({ captions, ...d }) => d);
-  if (list.length)
-    teams.push({ slug, name: slug === 'club' ? 'Parklands Cricket Club' : e.name, grade: team?.gradeName ?? null, mascot, dates: list });
+  const results = team ? teamResults(team.name) : [];
+  if (list.length || results.length)
+    teams.push({ slug, name: slug === 'club' ? 'Parklands Cricket Club' : team?.name ?? e.name, grade: team?.gradeName ?? null, mascot, dates: list, results });
+}
+
+// Teams with no highlights folder still get their results.
+for (const team of squad.teams) {
+  if (teams.some((t) => t.slug === team.slug)) continue;
+  let mascot = null;
+  const mascotSrc = join(projectDir, 'web/static/mascots', `${team.mascot ?? team.slug}.webp`);
+  if (existsSync(mascotSrc)) {
+    copyFileSync(mascotSrc, join(assetDir, `${team.slug}.webp`));
+    mascot = `_slideshow/${team.slug}.webp`;
+  }
+  teams.push({ slug: team.slug, name: team.name, grade: team.gradeName ?? null, mascot, dates: [], results: teamResults(team.name) });
 }
 
 const photoCount = teams.reduce((n, t) => n + t.dates.reduce((m, d) => m + d.photos.length, 0), 0);
-const data = { title, season: squad.season?.name ?? '', built: new Date().toISOString(), teams };
+// The show runs section by section, teams in this order. A team missing from every list goes in a
+// final "Other teams" section, so a new team still appears.
+const SECTIONS = [
+  ['Kiwi Cricket', ['monkeys', 'orcas', 'penguins', 'lions', 'dolphins']],
+  ['Girls', ['narwhals', 'unicorns', 'swans', 'meerkats', 'pandas', 'korimako']],
+  ['Y3/Y4', ['panthers', 'sharks', 'tigers', 'wombats', 'gorillas', 'bears', 'dragons', 'lemurs']],
+  ['Boys Y5+/Hardball', ['cheetahs', 'pelicans', 'rhinos', 'wolves', 'jackals', 'leopards', 'pythons', 'pumas']],
+];
+const sections = SECTIONS.map(([name, slugs]) => ({
+  name,
+  teams: slugs.map((s) => teams.find((t) => t.slug === s)).filter(Boolean),
+}));
+const placed = new Set(SECTIONS.flatMap(([, s]) => s));
+const others = teams.filter((t) => !placed.has(t.slug));
+if (others.length) sections.push({ name: 'Other teams', teams: others });
+const data = { title, season: squad.season?.name ?? '', built: new Date().toISOString(), nightDate, teams, sections };
 
 const html = `<!doctype html>
 <html lang="en">
@@ -145,9 +258,26 @@ const html = `<!doctype html>
   .quotes { margin-top: 3vh; display: grid; gap: 2.4vh; max-height: 52vh; overflow: hidden; }
   .quotes p { font-size: 3.3vh; line-height: 1.4; white-space: pre-line; }
   .quotes .who { display: block; font-size: 2.3vh; color: var(--muted); margin-top: .6vh; }
+  .result { margin-top: 2.5vh; display: flex; align-items: center; gap: 1.2vw; }
+  .result .score { margin-top: 0; }
+  .wl { display: inline-block; padding: .8vh 2.2vh; border-radius: 99px; font-size: 3vh; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .08em; }
+  .wl.win { background: var(--teal); color: var(--ink); }
+  .wl.loss { border: .3vh solid var(--muted); color: var(--muted); }
+  .wl.tie { border: .3vh solid var(--teal); color: var(--teal); }
+  .awards { margin-top: 2.2vh; display: grid; gap: .8vh; font-size: 3vh; color: var(--muted); }
+  .awards b { color: var(--text); font-weight: 700; }
+  .milestones { margin-top: 2.6vh; display: flex; flex-wrap: wrap; gap: 1vh 1vw; max-width: 60vw; }
+  .milestones .kicker { flex-basis: 100%; font-size: 2.2vh; }
+  .ms { font-size: 2.6vh; padding: .6vh 1.6vh; border-radius: 99px; background: rgba(64,190,179,.14); color: var(--text); }
+  .ms b { font-weight: 700; }
   .intro { text-align: center; }
   .intro img { width: min(70vw, 900px); }
   .intro h1 { font-size: 10vh; margin-top: 5vh; font-weight: 800; }
+  .section img { width: min(40vw, 520px); opacity: .9; }
+  .section h1 { font-size: 13vh; margin-top: 4vh; }
+  .section .crew { display: flex; justify-content: center; flex-wrap: wrap; gap: 2vh; margin-top: 5vh; }
+  .section .crew img { width: 13vh; height: 13vh; object-fit: contain; border-radius: 2vh; opacity: 1; }
   .intro p { font-size: 3.4vh; color: var(--muted); margin-top: 2vh; }
   #hud { position: fixed; top: 2vh; right: 2vw; font-size: 2vh; color: var(--muted); opacity: 0; transition: opacity .4s; }
   #hud.show { opacity: 1; }
@@ -169,15 +299,20 @@ const photoTotal = DATA.teams.reduce((n, t) => n + t.dates.reduce((m, d) => m + 
 
 function buildDeck() {
   const deck = [{ kind: 'intro', secs: 8 }];
-  for (const team of shuffle([...DATA.teams])) {
-    deck.push({ kind: 'team', team, secs: 5 });
-    for (const day of team.dates) {
-      if (day.texts.length) {
-        const words = day.texts.reduce((n, t) => n + t.text.split(/\\s+/).length, 0);
-        deck.push({ kind: 'text', team, day, secs: Math.min(20, 7 + words / 4) });
-      }
+  for (const section of DATA.sections) {
+   deck.push({ kind: 'section', section, secs: 6 });
+   for (const team of section.teams) {
+    deck.push({ kind: 'team', team, section, secs: 5 });
+    const days = new Map(team.dates.map((d) => [d.date, d]));
+    const games = new Map((team.results ?? []).map((g) => [g.date, g]));
+    for (const date of [...new Set([...days.keys(), ...games.keys()])].sort()) {
+      const day = days.get(date) ?? { date, texts: [], photos: [] };
+      const game = games.get(date) ?? null;
+      const words = day.texts.reduce((n, t) => n + t.text.split(/\\s+/).length, 0);
+      deck.push({ kind: 'text', team, day, game, secs: Math.min(20, (day.texts.length ? 7 : 6) + words / 4) });
       for (const photo of day.photos) deck.push({ kind: 'photo', team, day, photo, secs: SECS });
     }
+   }
   }
   return deck;
 }
@@ -187,14 +322,35 @@ function render(s) {
   const mascot = t && (t.mascot ? '<img class="mascot" src="' + t.mascot + '" alt="">' : '<img class="mascot logo" src="_slideshow/logo.svg" alt="">');
   if (s.kind === 'intro') return '<div class="intro"><img src="_slideshow/logo.svg" alt="Parklands Cricket Club"><h1>' + esc(DATA.title) + '</h1><p>Game Day Highlights &middot; ' +
     esc(DATA.season) + ' &middot; ' + DATA.teams.length + ' teams &middot; ' + photoTotal + ' photos</p></div>';
-  if (s.kind === 'team') return '<div class="card">' + mascot + '<div><div class="kicker">Next up</div><h1>' + esc(t.name) + '</h1>' +
+  if (s.kind === 'section') return '<div class="intro section"><img src="_slideshow/logo.svg" alt=""><h1>' + esc(s.section.name) + '</h1><div class="crew">' +
+    s.section.teams.map((x) => x.mascot ? '<img src="' + x.mascot + '" alt="' + esc(x.name) + '">' : '').join('') + '</div></div>';
+  if (s.kind === 'team') return '<div class="card">' + mascot + '<div><div class="kicker">' + esc(s.section ? s.section.name : 'Next up') + '</div><h1>' + esc(t.name) + '</h1>' +
     (t.grade ? '<h2>' + esc(t.grade) + '</h2>' : '') + '</div></div>';
   if (s.kind === 'text') {
-    const score = s.day.texts.find((x) => x.score)?.score;
-    return '<div class="card">' + mascot + '<div><div class="kicker">' + esc(fmt(s.day.date)) + '</div><h1>' + esc(t.name) + '</h1>' +
-      (score ? '<span class="score">' + esc(score.replace(' v ', ' &nbsp;v&nbsp; ')).replace(/&amp;nbsp;/g, '&nbsp;') + '</span>' : '') +
-      '<div class="quotes">' + s.day.texts.map((x) => '<p>' + esc(x.text) + (x.who ? '<span class="who">&mdash; ' + esc(x.who) + '</span>' : '') + '</p>').join('') +
-      '</div></div></div>';
+    const g = s.game;
+    const next = g && g.date === DATA.nightDate && !g.us && !g.them;
+    const hlScore = s.day.texts.find((x) => x.score)?.score;
+    let result = '';
+    if (g && (g.us || g.them))
+      result = '<div class="result">' + (g.outcome ? '<span class="wl ' + g.outcome.toLowerCase() + '">' + g.outcome + '</span>' : '') +
+        '<span class="score">' + esc(g.us ?? '?') + ' &nbsp;v&nbsp; ' + esc(g.them ?? '?') + '</span></div>';
+    else if (g && g.notPlayed) result = '<div class="result"><span class="score">' + esc(g.notPlayed) + '</span></div>';
+    else if (next) result = '<div class="result"><span class="score">Result to come</span></div>';
+    else if (hlScore) result = '<div class="result"><span class="score">' + esc(hlScore).replace(' v ', ' &nbsp;v&nbsp; ') + '</span></div>';
+    else if (g) result = '<div class="result"><span class="score">Result not in yet</span></div>';
+    const awards = g && (g.potd || g.mascot)
+      ? '<div class="awards">' + (g.potd ? '<span>Player of the Day: <b>' + esc(g.potd) + '</b></span>' : '') +
+        (g.mascot ? '<span>Mascot of the Day: <b>' + esc(g.mascot) + '</b></span>' : '') + '</div>'
+      : '';
+    const ms = g && g.milestones && g.milestones.length
+      ? '<div class="milestones"><div class="kicker">Milestones</div>' + g.milestones.map((m) =>
+          '<span class="ms ' + (m.type === 'Batting' ? 'bat' : 'bowl') + '">' +
+          '<b>' + esc(m.who) + '</b> ' + esc(m.text) + '</span>').join('') + '</div>'
+      : '';
+    return '<div class="card">' + mascot + '<div><div class="kicker">' + esc(fmt(s.day.date)) + (next ? ' &middot; Today' : '') + '</div>' +
+      '<h1>' + esc(t.name) + '</h1>' + (g && g.opp ? '<h2>v ' + esc(g.opp) + '</h2>' : '') + result + awards + ms +
+      (s.day.texts.length ? '<div class="quotes">' + s.day.texts.map((x) => '<p>' + esc(x.text) + (x.who ? '<span class="who">&mdash; ' + esc(x.who) + '</span>' : '') + '</p>').join('') + '</div>' : '') +
+      '</div></div>';
   }
   const p = s.photo;
   return '<div class="bg" style="background-image:url(&quot;' + p.src + '&quot;)"></div><img class="photo" src="' + p.src + '" alt="">' +
@@ -237,4 +393,6 @@ show(0);
 `;
 
 writeFileSync(join(outDir, `${title}.html`), html, 'utf8');
-console.log(`Slideshow: ${teams.length} teams, ${photoCount} photos -> ${join(outDir, `${title}.html`)}`);
+const milestoneCount = teams.reduce((n, t) => n + (t.results ?? []).reduce((m, g) => m + (g.milestones?.length ?? 0), 0), 0);
+const resultCount = teams.reduce((n, t) => n + (t.results ?? []).filter((g) => g.us || g.them).length, 0);
+console.log(`Slideshow: ${teams.length} teams, ${resultCount} results, ${milestoneCount} milestones, ${photoCount} photos -> ${join(outDir, `${title}.html`)}`);
