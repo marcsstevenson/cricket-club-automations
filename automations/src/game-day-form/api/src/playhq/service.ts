@@ -10,8 +10,8 @@ export function playhqService(env: Env, deps: Deps, waitUntil: (p: Promise<unkno
   const client = createPlayhqClient(env, deps.fetch);
   const now = () => deps.now().getTime();
   return {
-    fixture: (gradeId: string, force = false) =>
-      swr({ kv: env.CONFIG, key: `phq:fixture:${gradeId}`, now: now(), freshFor: () => SIX_HOURS, load: () => client.fixture(gradeId), force, waitUntil }),
+    fixture: (teamId: string, force = false) =>
+      swr({ kv: env.CONFIG, key: `phq:team-fixture:${teamId}`, now: now(), freshFor: () => SIX_HOURS, load: () => client.fixture(teamId), force, waitUntil }),
     summary: (gameId: string, force = false) =>
       swr<V2Summary>({
         kv: env.CONFIG,

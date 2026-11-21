@@ -14,13 +14,17 @@ export function createPlayhqClient(env: Env, fetchFn: typeof fetch) {
   }
 
   return {
-    async fixture(gradeId: string): Promise<V1Game[]> {
+    /**
+     * Every game the team has in the season, across all the grades it has played in. Teams are regraded
+     * mid-season (e.g. Section 1 to Section 2), so a single grade's games miss the games after a move.
+     */
+    async fixture(teamId: string): Promise<V1Game[]> {
       const out: V1Game[] = [];
       let cursor: string | undefined;
       do {
         const q = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
         const page = await get<{ data: V1Game[]; metadata?: { hasMore: boolean; nextCursor: string | null } }>(
-          `/v1/grades/${gradeId}/games${q}`,
+          `/v1/teams/${teamId}/fixture${q}`,
         );
         out.push(...page.data);
         cursor = page.metadata?.hasMore && page.metadata.nextCursor ? page.metadata.nextCursor : undefined;

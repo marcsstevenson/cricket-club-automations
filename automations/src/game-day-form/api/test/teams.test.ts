@@ -2,7 +2,7 @@ import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { TeamPage } from '../../shared/src/api';
 import { createApp } from '../src/app';
-import { fail, fakeFetch, GRADE, v1Game, v1Page } from './fixtures/playhq';
+import { fail, fakeFetch, PUMAS, v1Game, v1Page } from './fixtures/playhq';
 import { call, seedSquad, testDeps } from './helpers';
 
 const fixture = v1Page([
@@ -13,7 +13,7 @@ const fixture = v1Page([
   v1Game({ id: 'other', date: '2026-01-31', teamId: 'someone-else' }),
 ]);
 
-const get = async (path: string, routes: Record<string, unknown> = { [`/v1/grades/${GRADE}/games`]: fixture }) => {
+const get = async (path: string, routes: Record<string, unknown> = { [`/v1/teams/${PUMAS}/fixture`]: fixture }) => {
   const res = await call(createApp(testDeps({ fetch: fakeFetch(routes).fetch })), path);
   return { res, body: (await res.json()) as TeamPage & { error?: string } };
 };
@@ -56,14 +56,14 @@ describe('GET /api/teams/:slug', () => {
       v1Game({ id: 'g5', date: '2026-02-14', status: 'PENDING', round: 2 }),
       v1Game({ id: 'g4', date: '2026-02-07', status: 'PENDING', round: 1 }),
     ]);
-    const { body } = await get('/api/teams/pumas', { [`/v1/grades/${GRADE}/games`]: early });
+    const { body } = await get('/api/teams/pumas', { [`/v1/teams/${PUMAS}/fixture`]: early });
     expect(body.fixture.games.map((g) => g.gameId)).toEqual(['g4', 'g5', 'gTbc']);
     expect(body.defaultGameId).toBe('g4');
   });
 
   it('defaults to a Date TBC game when it is the only game', async () => {
     const tbc = v1Page([v1Game({ id: 'gTbc', date: null, status: 'PENDING', round: 1 })]);
-    expect((await get('/api/teams/pumas', { [`/v1/grades/${GRADE}/games`]: tbc })).body.defaultGameId).toBe('gTbc');
+    expect((await get('/api/teams/pumas', { [`/v1/teams/${PUMAS}/fixture`]: tbc })).body.defaultGameId).toBe('gTbc');
   });
 
   it('marks reported and not-played games', async () => {
@@ -106,14 +106,26 @@ describe('GET /api/teams/:slug', () => {
     expect(body.error).toBe('team_not_found');
   });
 
-  it('reports the fixture as unavailable when the team has no grade yet', async () => {
+  it("loads a team's fixture by team, so a grade change or a missing grade ID doesn't hide games", async () => {
+    // Tigers have no grade ID in the squad; their games come from two grades after a mid-season regrade.
+    const { body } = await get('/api/teams/tigers', {
+      '/v1/teams/team-tigers/fixture': v1Page([
+        v1Game({ id: 't1', date: '2026-01-24', teamId: 'team-tigers' }),
+        v1Game({ id: 't2', date: '2026-01-31', teamId: 'team-tigers' }),
+      ]),
+    });
+    expect(body.fixture.available).toBe(true);
+    expect(body.fixture.games.map((g) => g.gameId)).toEqual(['t1', 't2']);
+  });
+
+  it('reports the fixture as unavailable when PlayHQ has no fixture for the team', async () => {
     const { body } = await get('/api/teams/tigers');
     expect(body.fixture).toEqual({ available: false, games: [] });
     expect(body.defaultGameId).toBeNull();
   });
 
   it('still loads when PlayHQ is down and nothing is cached', async () => {
-    const { res, body } = await get('/api/teams/pumas', { [`/v1/grades/${GRADE}/games`]: fail });
+    const { res, body } = await get('/api/teams/pumas', { [`/v1/teams/${PUMAS}/fixture`]: fail });
     expect(res.status).toBe(200);
     expect(body.fixture.available).toBe(false);
   });

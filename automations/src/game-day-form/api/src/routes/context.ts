@@ -29,10 +29,9 @@ export function toOption(g: FixtureGame, status: 'reported' | 'not_played' | und
 }
 
 export async function fixtureFor(c: Ctx, squad: Squad, team: Team, today: string) {
-  if (!team.playhqGradeId) return { available: false, games: [] as GameOption[] };
   let games: FixtureGame[];
   try {
-    games = teamFixture((await phq(c).fixture(team.playhqGradeId)).data, team.playhqTeamId);
+    games = teamFixture((await phq(c).fixture(team.playhqTeamId)).data, team.playhqTeamId);
   } catch (err) {
     console.warn(JSON.stringify({ msg: 'fixture_unavailable', team: team.slug, error: String(err) }));
     return { available: false, games: [] as GameOption[] };

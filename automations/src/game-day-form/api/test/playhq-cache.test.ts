@@ -21,12 +21,12 @@ describe('createPlayhqClient', () => {
 
   it('follows fixture pagination', async () => {
     const f = fakeFetch({
-      '/v1/grades/gr/games': (u: URL) =>
+      '/v1/teams/tm/fixture': (u: URL) =>
         u.searchParams.get('cursor') ? v1Page([v1Game({ id: 'b', date: '2026-01-02' })]) : v1Page([v1Game({ id: 'a', date: '2026-01-01' })], 'c2'),
     });
-    const games = await createPlayhqClient(env, f.fetch).fixture('gr');
+    const games = await createPlayhqClient(env, f.fetch).fixture('tm');
     expect(games.map((g) => g.id)).toEqual(['a', 'b']);
-    expect(f.calls).toEqual(['/v1/grades/gr/games', '/v1/grades/gr/games?cursor=c2']);
+    expect(f.calls).toEqual(['/v1/teams/tm/fixture', '/v1/teams/tm/fixture?cursor=c2']);
   });
 
   it('throws on HTTP errors', async () => {
@@ -99,15 +99,15 @@ describe('playhqService', () => {
   it('treats a final summary and the fixture as fresh for 6 hours', async () => {
     const f = fakeFetch({
       '/v2/games/g1/summary': { data: summary({ id: 'g1' }) },
-      '/v1/grades/gr/games': v1Page([]),
+      '/v1/teams/tm/fixture': v1Page([]),
     });
     const c = collector();
     const svc = (offset: number) => playhqService(env, testDeps({ fetch: f.fetch, now: () => new Date(NOW.getTime() + offset) }), c.waitUntil);
     await svc(0).summary('g1');
-    await svc(0).fixture('gr');
+    await svc(0).fixture('tm');
     expect((await svc(SIX_HOURS - 1).summary('g1')).stale).toBe(false);
-    expect((await svc(SIX_HOURS - 1).fixture('gr')).stale).toBe(false);
-    expect((await svc(SIX_HOURS + 1).fixture('gr')).stale).toBe(true);
+    expect((await svc(SIX_HOURS - 1).fixture('tm')).stale).toBe(false);
+    expect((await svc(SIX_HOURS + 1).fixture('tm')).stale).toBe(true);
     await c.settle();
   });
 });

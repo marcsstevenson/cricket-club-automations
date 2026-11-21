@@ -5,7 +5,7 @@ import { startData, unavailableStart } from '../src/playhq/summary';
 import { findTeam, parseSquad } from '../src/squad/load';
 import { squadLabels } from '../../shared/src/labels';
 import squadFixture from './fixtures/squad.json';
-import { fail, fakeFetch, GRADE, summary, v1Game, v1Page } from './fixtures/playhq';
+import { fail, fakeFetch, PUMAS, summary, v1Game, v1Page } from './fixtures/playhq';
 import { call, seedSquad, testDeps } from './helpers';
 import { form, put } from './builders';
 
@@ -95,7 +95,7 @@ describe('startData — milestone rule and figures', () => {
 });
 
 const routes = (over: Record<string, unknown> = {}) => ({
-  [`/v1/grades/${GRADE}/games`]: v1Page([v1Game({ id: 'g2', date: '2026-01-31' }), v1Game({ id: 'g3', date: '2026-02-07', status: 'PENDING' })]),
+  [`/v1/teams/${PUMAS}/fixture`]: v1Page([v1Game({ id: 'g2', date: '2026-01-31' }), v1Game({ id: 'g3', date: '2026-02-07', status: 'PENDING' })]),
   '/v2/games/g2/summary': { data: full },
   ...over,
 });
@@ -128,7 +128,7 @@ describe('GET /api/teams/:slug/games/:gameId', () => {
   });
 
   it('503s when the fixture is unavailable and nothing is cached', async () => {
-    const res = await call(createApp(testDeps({ fetch: fakeFetch(routes({ [`/v1/grades/${GRADE}/games`]: fail })).fetch })), '/api/teams/pumas/games/g2');
+    const res = await call(createApp(testDeps({ fetch: fakeFetch(routes({ [`/v1/teams/${PUMAS}/fixture`]: fail })).fetch })), '/api/teams/pumas/games/g2');
     expect(res.status).toBe(503);
     expect(await res.json()).toMatchObject({ error: 'fixture_unavailable' });
   });

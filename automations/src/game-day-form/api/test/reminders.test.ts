@@ -6,7 +6,7 @@ import type { Env } from '../src/env';
 import { validateContacts } from '../src/reminders/contacts';
 import { nzHour, runReminders } from '../src/reminders/run';
 import { form, pumasRoutes, put } from './builders';
-import { GRADE, v1Game, v1Page } from './fixtures/playhq';
+import { PUMAS, v1Game, v1Page } from './fixtures/playhq';
 import { call, seedSquad, testDeps } from './helpers';
 
 const SIX_PM = new Date('2026-01-31T05:00:00Z'); // Sat 31 Jan, 6 pm NZDT: g2's game day
@@ -19,7 +19,7 @@ type Sent = { body: Record<string, unknown>; headers: Headers };
 
 /** PlayHQ fake (optionally with other games) plus a Resend fake that records what was sent. */
 function routes(resend: () => Response = () => Response.json({ id: 'em_1' }), games?: ReturnType<typeof v1Game>[]) {
-  const phq = pumasRoutes(games ? { [`/v1/grades/${GRADE}/games`]: v1Page(games) } : {});
+  const phq = pumasRoutes(games ? { [`/v1/teams/${PUMAS}/fixture`]: v1Page(games) } : {});
   const sent: Sent[] = [];
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -135,7 +135,7 @@ describe('runReminders', () => {
   it('never reminds the same game twice, even if it moves to another day', async () => {
     await saveContacts('pumas', ['coach@example.com']);
     expect(await run(routes(), at(18))).toEqual({ sent: 1, failed: 0 });
-    await env.CONFIG.delete(`phq:fixture:${GRADE}`); // PlayHQ now has it a day later
+    await env.CONFIG.delete(`phq:team-fixture:${PUMAS}`); // PlayHQ now has it a day later
     const moved = routes(undefined, [v1Game({ id: 'g2', date: '2026-02-01', round: 4 })]);
     expect(await run(moved, new Date('2026-02-01T05:00:00Z'))).toEqual({ sent: 0, failed: 0 });
   });

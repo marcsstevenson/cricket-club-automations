@@ -7,7 +7,6 @@ import { toCsv, type Cell } from '../csv';
 import type { AppEnv } from '../env';
 import { applyFilters, buildRows, person, type Row } from '../list/rows';
 import { teamFixture, type FixtureGame } from '../playhq/fixture';
-import type { V1Game } from '../playhq/types';
 import { loadReports } from '../reports/repo';
 import { loadSquad } from '../squad/load';
 import { phq, type Ctx } from './context';
@@ -16,18 +15,14 @@ export async function allRows(c: Ctx): Promise<Row[]> {
   const deps = c.get('deps');
   const squad = await loadSquad(c.env, deps.now());
   const service = phq(c);
-  const byGrade = new Map<string, Promise<V1Game[] | null>>();
-  const fixtures = new Map<string, FixtureGame[] | null>();
-  for (const team of squad.teams) {
-    const grade = team.playhqGradeId;
-    if (!grade) {
-      fixtures.set(team.slug, null);
-      continue;
-    }
-    if (!byGrade.has(grade)) byGrade.set(grade, service.fixture(grade).then((r) => r.data).catch(() => null));
-    const games = await byGrade.get(grade)!;
-    fixtures.set(team.slug, games ? teamFixture(games, team.playhqTeamId) : null);
-  }
+  const fixtures = new Map<string, FixtureGame[] | null>(
+    await Promise.all(
+      squad.teams.map(async (team) => {
+        const games = await service.fixture(team.playhqTeamId).then((r) => r.data).catch(() => null);
+        return [team.slug, games ? teamFixture(games, team.playhqTeamId) : null] as const;
+      }),
+    ),
+  );
   const rows = buildRows({
     squad,
     fixtures,

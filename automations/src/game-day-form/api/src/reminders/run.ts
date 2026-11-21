@@ -50,10 +50,10 @@ export async function runReminders(env: Env, deps: Deps, waitUntil: (p: Promise<
 
   for (const team of squad.teams) {
     const to = contacts.get(team.slug);
-    if (!to?.to.length || !team.playhqGradeId) continue;
+    if (!to?.to.length) continue;
     let games;
     try {
-      games = teamFixture((await service.fixture(team.playhqGradeId)).data, team.playhqTeamId).filter((g) => g.date === today);
+      games = teamFixture((await service.fixture(team.playhqTeamId)).data, team.playhqTeamId).filter((g) => g.date === today);
     } catch (err) {
       console.warn(JSON.stringify({ msg: 'reminder_fixture_unavailable', team: team.slug, error: String(err) }));
       continue;

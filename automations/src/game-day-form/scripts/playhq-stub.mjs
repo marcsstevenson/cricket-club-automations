@@ -64,7 +64,7 @@ createServer((req, res) => {
     return;
   }
   if (path === '/emails') return send(emails);
-  if (path === '/v1/grades/grade-y6/games') return send({ data: games, metadata: { hasMore: false, nextCursor: null } });
+  if (path === '/v1/teams/team-pumas/fixture') return send({ data: games, metadata: { hasMore: false, nextCursor: null } });
   const m = path.match(/^\/v2\/games\/(e2e-g[123])\/summary$/);
   if (m) return send({ data: summary(m[1], m[1] === 'e2e-g2') });
   res.writeHead(404).end();
